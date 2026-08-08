@@ -53,8 +53,6 @@ button{background:none;border:0;cursor:pointer}
 @media(max-width:900px){
   #app{grid-template-columns:1fr;grid-template-areas:"top" "main"}
 }
-/* טווח שעות הוא תמיד רצף LTR — אחרת ה-bidi הופך 09:00–11:30 ל-11:30–09:00 */
-.ltr{direction:ltr;unicode-bidi:isolate}
 
 /* ── top bar ──────────────────────────────────────────────── */
 #top{
@@ -135,23 +133,26 @@ button{background:none;border:0;cursor:pointer}
 .nav:disabled{opacity:.32;cursor:default;border-color:var(--border);color:var(--sub)}
 #daysub{font-size:13.5px;color:var(--sub);margin-bottom:20px}
 
-/* גלישה: בעמודה צרה שדה הטקסט יורד לשורה משלו במקום להצטמצם לכלום */
+/* שתי שורות תמיד: שעות למעלה, ומה עושים + מחיקה מתחת. אותו מבנה בכל
+   רוחב, כך שאין חשבון רוחב שנשבר בעמודה צרה. */
 .r{display:flex;flex-wrap:wrap;align-items:center;gap:6px;
    border-bottom:1px solid var(--line);padding:7px 0}
 .r:hover{background:var(--muted)}
-.times{display:flex;align-items:center;gap:4px;flex:none}
+.times{flex:0 0 100%;display:flex;align-items:center;gap:16px}
+.tl{display:flex;align-items:center;gap:5px;cursor:pointer}
+.tl>span{font-size:11.5px;color:var(--sub);font-weight:500;min-width:18px}
 .r input[type=time]{
   width:98px;background:none;border:1px solid transparent;color:var(--sub);
   font-size:14.5px;font-variant-numeric:tabular-nums;padding:5px 6px;cursor:pointer}
 .r input[type=time]:hover{border-color:var(--border)}
 .r input[type=time]:focus{outline:none;border-color:var(--violet);color:var(--ink)}
-.times i{color:var(--sub);font-style:normal;font-size:12px}
 .r input[type=text]{
-  flex:1 1 150px;background:none;border:0;padding:8px 6px;font-size:15.5px;min-width:0}
+  order:2;flex:1 1 auto;background:none;border:0;padding:8px 6px;
+  font-size:15.5px;min-width:0}
 .r input[type=text]:focus{outline:2px solid var(--violet);outline-offset:-2px}
 .r input[type=text]::placeholder{color:var(--faint)}
 .r.full input[type=time]{color:var(--violet);font-weight:500}
-.r .x{flex:none;width:28px;color:var(--faint);font-size:18px;line-height:1}
+.r .x{order:3;flex:none;width:28px;color:var(--faint);font-size:18px;line-height:1}
 .r:hover .x,.r:focus-within .x{color:var(--sub)}
 .r .x:hover{color:#c0392b}
 #add{
@@ -198,12 +199,10 @@ button{background:none;border:0;cursor:pointer}
   /* יעדי מגע: 44px, ו-16px בשדות כדי ש-iOS לא יזום בפוקוס */
   .nav{width:42px;height:42px;font-size:17px}
   #gear{padding:8px 10px;font-size:21px}
-  /* השעות בשורה משלהן, ו-× יושב ליד הטקסט שהוא מוחק ולא ליד השעות */
   .r{gap:4px;padding:9px 0}
-  .times{flex:0 0 100%}
   .r input[type=time]{width:112px;font-size:16px;padding:9px 6px}
-  .r input[type=text]{order:2;flex:1 1 auto;font-size:16px;padding:6px 4px 8px}
-  .r .x{order:3;width:42px;height:42px;font-size:22px}
+  .r input[type=text]{font-size:16px;padding:6px 4px 8px}
+  .r .x{width:42px;height:42px;font-size:22px}
   #add{width:100%;text-align:center;padding:13px;font-size:15px}
   .btn{padding:12px}
 }
@@ -443,15 +442,18 @@ function paintDay(focusEv){
   for(const ev of evs){
     const r=document.createElement('div');
     r.className='r'+(ev.x.trim()?' full':'');
-    r.innerHTML=`<span class="times ltr">
-        <input type="time" value="${esc(ev.t)}" aria-label="שעת התחלה">
-        <i aria-hidden="true">–</i>
-        <input type="time" value="${esc(ev.e)}" aria-label="שעת סיום (לא חובה)">
+    // תוויות גלויות, והתחלה ראשונה בסדר הקריאה — בלי זה הוקלדה שעת
+    // ההתחלה לתוך שדה הסיום, כי העין העברית פוגשת אותו קודם
+    r.innerHTML=`<span class="times">
+        <label class="tl"><span>מ־</span>
+          <input type="time" value="${esc(ev.t)}" aria-label="שעת התחלה"></label>
+        <label class="tl"><span>עד</span>
+          <input type="time" value="${esc(ev.e)}" aria-label="שעת סיום (לא חובה)"></label>
       </span>
       <input type="text" placeholder="מה עושים?" aria-label="מה עושים?" autocomplete="off">
       <button class="x" aria-label="מחק אירוע">×</button>`;
     const [times,text,del]=r.children;
-    const [from,,to]=times.children;
+    const [from,to]=times.querySelectorAll('input');
     text.value=ev.x;
     // רק התא ביומן מתעדכן בהקלדה — ציור השורות היה הורס את מיקום הסמן
     text.oninput =()=>{ ev.x=text.value; r.classList.toggle('full',!!text.value.trim());
