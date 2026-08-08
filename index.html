@@ -26,12 +26,24 @@ button,input{font:inherit;color:inherit}
 button{background:none;border:0;cursor:pointer}
 ::selection{background:var(--violet-100)}
 
-/* בגריד RTL העמודה הראשונה היא הימנית — לכן הפאנל מוגדר ראשון */
+/* בגריד RTL העמודה הראשונה היא הימנית — לכן הפאנל מוגדר ראשון.
+   צר: היומן והיום חולקים את אותו אזור, אחד מהם מוסתר.
+   רחב: שניהם על המסך זה לצד זה ואין מעבר מסכים בכלל. */
 #app{
   height:100dvh; display:grid;
   grid-template-columns:280px 1fr;
   grid-template-rows:58px 1fr;
   grid-template-areas:"top top" "side main";
+}
+#cal,#day{grid-area:main;overflow-y:auto;background:var(--bg)}
+/* display:grid על #cal גובר על כלל ה-hidden של הדפדפן — צריך אותו במפורש */
+#cal[hidden],#day[hidden]{display:none}
+@media(min-width:1251px){
+  #app{grid-template-columns:280px 1fr 420px;
+       grid-template-areas:"top top top" "side cal day"}
+  #cal{grid-area:cal}
+  #day{grid-area:day;border-inline-start:1px solid var(--line)}
+  #tabs,#back{display:none}
 }
 @media(max-width:900px){
   #app{grid-template-columns:1fr;grid-template-areas:"top" "main"}
@@ -62,12 +74,11 @@ button{background:none;border:0;cursor:pointer}
   #status::before{width:9px;height:9px}
 }
 
-/* ── main ─────────────────────────────────────────────────── */
-#main{grid-area:main;overflow-y:auto;background:var(--bg)}
-
-/* calendar */
-#cal{padding:22px 24px 60px;max-width:1150px}
-.mo{margin-bottom:34px}
+/* calendar — חודשים זה לצד זה כשיש רוחב, אחרת אחד מתחת לשני */
+#cal{
+  padding:22px 24px 60px; display:grid; gap:26px; align-content:start;
+  grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.mo{margin-bottom:0}
 .mo h3{font-size:20px;font-weight:700;margin-bottom:14px}
 .wd,.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
 .wd span{
@@ -83,6 +94,7 @@ button{background:none;border:0;cursor:pointer}
 .cell.today .n{
   background:var(--violet);color:#fff;width:24px;height:24px;
   display:grid;place-items:center;font-weight:700}
+.cell.sel{background:var(--muted);outline:2px solid var(--violet);outline-offset:-2px}
 .cell .ev{
   font-size:11.5px;line-height:1.35;background:var(--violet-100);
   padding:2px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -98,6 +110,8 @@ button{background:none;border:0;cursor:pointer}
 /* day view */
 #day{padding:26px 30px 70px;max-width:760px}
 #dayhead{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+/* מוצמד לקצה, כדי שאורך שם היום לא יזיז את החצים */
+.navs{margin-inline-start:auto;display:flex;gap:6px;flex:none}
 #dayhead h1{font-size:27px;font-weight:700;letter-spacing:-.4px}
 #dayhead h1 em{font-style:normal;color:var(--violet)}
 .nav{
@@ -173,19 +187,19 @@ button{background:none;border:0;cursor:pointer}
     <button id="gear" title="תפריט">☰</button>
   </header>
 
-  <main id="main">
-    <div id="cal"></div>
-    <div id="day" hidden>
-      <a id="back">→ חזרה ליומן</a>
-      <div id="dayhead">
+  <main id="cal"></main>
+  <section id="day" hidden>
+    <a id="back">→ חזרה ליומן</a>
+    <div id="dayhead">
+      <h1></h1>
+      <div class="navs">
         <button class="nav" id="prev" title="יום קודם">→</button>
-        <h1></h1>
         <button class="nav" id="next" title="יום הבא">←</button>
       </div>
-      <p id="daysub"></p>
-      <div id="rows"></div>
     </div>
-  </main>
+    <p id="daysub"></p>
+    <div id="rows"></div>
+  </section>
 
   <aside id="right">
     <div class="grp">
@@ -298,12 +312,17 @@ function migrate(){
 }
 
 /* ── render ────────────────────────────────────────────────── */
+// מ-1251px ומעלה שניהם על המסך ואין מעבר מסכים
+const wide=matchMedia('(min-width:1251px)');
+wide.addEventListener('change',()=>render());
+
 function render(focusEv){
-  $('#cal').hidden = view!=='cal';
-  $('#day').hidden = view!=='day';
+  const split=wide.matches;
+  $('#cal').hidden = !split && view!=='cal';
+  $('#day').hidden = !split && view!=='day';
   $('#tabCal').className = view==='cal'?'on':'';
   $('#tabDay').className = view==='day'?'on':'';
-  view==='cal' ? paintCal() : paintDay(focusEv);
+  paintCal(); paintDay(focusEv);
   paintStats();
 }
 
@@ -321,11 +340,12 @@ function paintCal(){
     for(const day of days){
       const evs=sorted(day).filter(e=>e.x.trim());
       const c=document.createElement('button');
-      c.className='cell'+(day===TODAY?' today':'');
+      c.className='cell'+(day===TODAY?' today':'')+(day===sel?' sel':'');
       c.innerHTML=`<span class="n">${parse(day).getDate()}</span>`
         + evs.slice(0,3).map(e=>`<span class="ev"><b class="ltr">${esc(span(e))}</b>${esc(e.x)}</span>`).join('')
         + (evs.length>3?`<span class="more">ועוד ${evs.length-3}</span>`:'');
-      c.onclick=()=>{ sel=day; view='day'; render(); };
+      // במסך מפוצל היום פשוט מתחלף בצד, בלי לעזוב את היומן
+      c.onclick=()=>{ sel=day; if(!wide.matches) view='day'; render(); };
       grid.append(c);
     }
     sec.append(grid); box.append(sec);
@@ -354,12 +374,14 @@ function paintDay(focusEv){
     const [times,text,del]=r.children;
     const [from,,to]=times.children;
     text.value=ev.x;
-    text.oninput =()=>{ ev.x=text.value; r.classList.toggle('full',!!text.value.trim()); touch(); };
+    // רק היומן מצויר מחדש בהקלדה — ציור השורות היה הורס את מיקום הסמן
+    text.oninput =()=>{ ev.x=text.value; r.classList.toggle('full',!!text.value.trim());
+                        touch(); if(wide.matches) paintCal(); };
     // שינוי שעת ההתחלה ממקם מחדש את האירוע, ולכן מצייר מחדש
     from.onchange=()=>{ if(!from.value){from.value=ev.t;return}
-                        ev.t=from.value; touch(); paintDay(ev); };
-    to.onchange  =()=>{ ev.e=to.value; touch(); };
-    del.onclick  =()=>{ const a=dayOf(sel); a.splice(a.indexOf(ev),1); touch(); paintDay(); };
+                        ev.t=from.value; touch(); render(ev); };
+    to.onchange  =()=>{ ev.e=to.value; touch(); render(); };
+    del.onclick  =()=>{ const a=dayOf(sel); a.splice(a.indexOf(ev),1); touch(); render(); };
     rows.append(r);
     if(ev===focusEv) queueMicrotask(()=>text.focus());
   }
@@ -373,10 +395,9 @@ function paintDay(focusEv){
     const a=dayOf(sel);
     const last=a.length ? Math.max(...a.map(e=>+e.t.slice(0,2))) : 8;
     const ev={t:String(Math.min(last+1,23)).padStart(2,'0')+':00', e:'', x:''};
-    a.push(ev); touch(); paintDay(ev);
+    a.push(ev); touch(); render(ev);
   };
   rows.append(add);
-  paintStats();
 }
 
 function paintStats(){
@@ -388,7 +409,7 @@ function paintStats(){
 
 /* ── controls ──────────────────────────────────────────────── */
 const go=n=>{ const i=DAYS.indexOf(sel)+n;
-              if(i>=0&&i<DAYS.length){ sel=DAYS[i]; paintDay(); } };
+              if(i>=0&&i<DAYS.length){ sel=DAYS[i]; render(); } };
 $('#prev').onclick=()=>go(-1);
 $('#next').onclick=()=>go(1);
 $('#back').onclick=()=>{ view='cal'; render(); };
