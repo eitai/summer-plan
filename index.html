@@ -289,6 +289,7 @@ function migrate(){
   for(const [day,v] of Object.entries(S.days||{}))
     if(!Array.isArray(v)) S.days[day]=Object.entries(v).map(([t,x])=>({t,x}));
   delete S.range;
+  S.v=2;
 }
 
 /* ── render ────────────────────────────────────────────────── */
