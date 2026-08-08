@@ -215,10 +215,14 @@ button{background:none;border:0;cursor:pointer}
       <button class="btn" id="clearDay">נקה את היום הזה</button>
     </div>
     <div class="grp">
+      <h4>סנכרון</h4>
+      <button class="btn" id="link"></button>
+      <p class="hint" id="syncHint"></p>
+    </div>
+    <div class="grp">
       <h4>גיבוי</h4>
       <button class="btn" id="exp">ייצוא לקובץ</button>
       <button class="btn" id="imp">ייבוא מקובץ</button>
-      <p class="hint" id="syncHint"></p>
     </div>
   </aside>
 
@@ -227,10 +231,12 @@ button{background:none;border:0;cursor:pointer}
 <div id="veil"></div>
 
 <script>
-/* ═══ הגדרת סנכרון ═══════════════════════════════════════════
-   ריק = שמירה מקומית בדפדפן בלבד (בלי סנכרון בין מכשירים).
-   מלא את שני השדות כדי לסנכרן בין המחשב לפלאפון.        */
-const CONFIG = { url:"", key:"" };
+/* ═══ סנכרון ═══════════════════════════════════════════════
+   הנתונים נשמרים כקובץ JSON יחיד ב-Gist פרטי ב-GitHub.
+   מזהה ה-Gist והטוקן נשמרים ב-localStorage של כל מכשיר בנפרד,
+   בכוונה — כדי שלא ישבו בקוד של אתר ציבורי.
+   מתחברים דרך "חבר סנכרון" בפאנל ההגדרות, פעם אחת בכל מכשיר. */
+const GIST='sp-gist', TOK='sp-token';
 /* ══════════════════════════════════════════════════════════ */
 
 const START='2026-08-08', END='2026-09-01', LS='summer-plan';
@@ -245,22 +251,25 @@ const TODAY=iso(new Date());
 let S={v:1,updatedAt:0,range:{from:8,to:22},days:{}};
 let sel=DAYS.includes(TODAY)?TODAY:DAYS[0];
 let dirty=false, saveT, scrolledTo=null;
+let linked = !!(localStorage.getItem(GIST) && localStorage.getItem(TOK));
 
-/* ── remote: Supabase REST, one row holding the whole doc ─── */
-const R = CONFIG.url && CONFIG.key ? {
-  h:{apikey:CONFIG.key,Authorization:'Bearer '+CONFIG.key,'Content-Type':'application/json'},
-  async load(){
-    const r=await fetch(`${CONFIG.url}/rest/v1/plan?id=eq.1&select=doc`,{headers:this.h});
+/* ── remote: one plan.json file inside a secret gist ───────── */
+const R = {
+  async req(method,body){
+    const r=await fetch('https://api.github.com/gists/'+localStorage.getItem(GIST),{
+      method, cache:'no-store',
+      headers:{Authorization:'Bearer '+localStorage.getItem(TOK),
+               Accept:'application/vnd.github+json'},
+      body: body && JSON.stringify(body)});
     if(!r.ok) throw new Error(r.status);
-    return (await r.json())[0]?.doc || null;
+    return r.json();
   },
-  async save(doc){
-    const r=await fetch(`${CONFIG.url}/rest/v1/plan`,{method:'POST',
-      headers:{...this.h,Prefer:'resolution=merge-duplicates'},
-      body:JSON.stringify({id:1,doc})});
-    if(!r.ok) throw new Error(r.status);
-  }
-} : null;
+  async load(){
+    const f=(await this.req('GET')).files['plan.json'];
+    return f ? JSON.parse(f.content) : null;
+  },
+  save(doc){ return this.req('PATCH',{files:{'plan.json':{content:JSON.stringify(doc)}}}); }
+};
 
 const $=s=>document.querySelector(s);
 const say=(t,c='')=>{const e=$('#status');e.textContent=t;e.className=c};
@@ -269,7 +278,7 @@ function touch(){
   S.updatedAt=Date.now();
   localStorage.setItem(LS,JSON.stringify(S));
   dirty=true;
-  if(!R){say('נשמר במכשיר','ok');return}
+  if(!linked){say('נשמר במכשיר','ok');return}
   say('שומר…','busy');
   clearTimeout(saveT); saveT=setTimeout(push,700);
 }
@@ -279,7 +288,7 @@ async function push(){
   catch(e){ say('אין חיבור — נשמר במכשיר','err'); clearTimeout(saveT); saveT=setTimeout(push,8000); }
 }
 async function pull(){
-  if(!R||dirty||document.activeElement?.tagName==='INPUT') return;
+  if(!linked||dirty||document.activeElement?.tagName==='INPUT') return;
   try{
     const r=await R.load();
     if(r && r.updatedAt>S.updatedAt){ S=r; localStorage.setItem(LS,JSON.stringify(S)); render(); }
@@ -404,17 +413,43 @@ $('#imp').onclick=()=>{
 $('#gear').onclick=()=>{ $('#right').classList.toggle('open'); $('#veil').classList.toggle('open'); };
 $('#veil').onclick=()=>{ $('#right').classList.remove('open'); $('#veil').classList.remove('open'); };
 
+/* ── sync link (once per device, kept out of the repo) ─────── */
+function syncUI(){
+  $('#link').textContent = linked ? 'נתק את המכשיר הזה' : 'חבר סנכרון';
+  $('#syncHint').textContent = linked
+    ? 'מסתנכרן אוטומטית מול ה-Gist. חבר גם את הפלאפון כדי לראות שם אותו לוח.'
+    : 'ללא סנכרון — נשמר בדפדפן הזה בלבד. "חבר סנכרון" מבקש מזהה Gist וטוקן, ושומר אותם במכשיר הזה בלבד.';
+}
+$('#link').onclick=async()=>{
+  if(linked){
+    if(!confirm('לנתק את המכשיר הזה? הנתונים יישארו ב-Gist וגם כאן.')) return;
+    localStorage.removeItem(TOK); localStorage.removeItem(GIST);
+    linked=false; syncUI(); say('נשמר במכשיר','ok'); return;
+  }
+  const g=prompt('מזהה ה-Gist:', localStorage.getItem(GIST)||''); if(!g) return;
+  const t=prompt('טוקן GitHub (github_pat_… , עם הרשאת Gists: read and write):',''); if(!t) return;
+  localStorage.setItem(GIST,g.trim()); localStorage.setItem(TOK,t.trim());
+  linked=true; say('מתחבר…','busy');
+  try{
+    const r=await R.load();
+    if(r && r.updatedAt>S.updatedAt){ S=r; localStorage.setItem(LS,JSON.stringify(S)); render(); }
+    else await R.save(S);
+    say('מסונכרן','ok'); syncUI();
+  }catch(e){
+    linked=false; localStorage.removeItem(TOK); syncUI(); say('החיבור נכשל','err');
+    alert('לא הצלחתי להתחבר. בדוק את מזהה ה-Gist ואת הטוקן (צריך הרשאת Gists: read and write).');
+  }
+};
+
 /* ── boot ──────────────────────────────────────────────────── */
 try{ const c=localStorage.getItem(LS); if(c) S={...S,...JSON.parse(c)}; }catch(e){}
-$('#syncHint').textContent = R
-  ? 'הנתונים מסתנכרנים אוטומטית בין כל המכשירים. הייצוא הוא גיבוי נוסף.'
-  : 'כרגע ללא סנכרון — הנתונים נשמרים בדפדפן הזה בלבד. כדאי לייצא גיבוי מדי פעם.';
-say(R?'מתחבר…':'נשמר במכשיר', R?'busy':'ok');
+syncUI();
+say(linked?'מתחבר…':'נשמר במכשיר', linked?'busy':'ok');
 render();
-if(R){ pull(); setInterval(pull,20000);
-  addEventListener('focus',pull);
-  document.addEventListener('visibilitychange',()=>!document.hidden&&pull()); }
-addEventListener('beforeunload',e=>{ if(dirty&&R){ e.preventDefault(); e.returnValue=''; } });
+pull(); setInterval(pull,20000);
+addEventListener('focus',pull);
+document.addEventListener('visibilitychange',()=>!document.hidden&&pull());
+addEventListener('beforeunload',e=>{ if(dirty&&linked){ e.preventDefault(); e.returnValue=''; } });
 </script>
 </body>
 </html>
