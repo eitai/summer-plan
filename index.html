@@ -90,19 +90,6 @@ button{background:none;border:0;cursor:pointer}
 /* right panel controls */
 .grp{border-bottom:1px solid var(--seam);padding:12px 14px 15px}
 .grp h4{font-size:11px;font-weight:700;letter-spacing:1.1px;color:var(--dim);margin-bottom:11px;text-transform:uppercase}
-.slider{display:flex;align-items:center;gap:10px;margin-bottom:9px}
-.slider label{font-size:12.5px;color:var(--txt);width:34px}
-.slider input[type=range]{flex:1;-webkit-appearance:none;appearance:none;background:none;height:16px}
-.slider input[type=range]::-webkit-slider-runnable-track{height:2px;background:#555;border-top:1px solid #1e1e1e}
-.slider input[type=range]::-moz-range-track{height:2px;background:#555}
-.slider input[type=range]::-webkit-slider-thumb{
-  -webkit-appearance:none;width:11px;height:11px;border-radius:50%;
-  background:#d0d0d0;border:1px solid #111;margin-top:-5px}
-.slider input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;background:#d0d0d0;border:1px solid #111}
-.slider .val{
-  width:46px;text-align:center;font-size:12px;color:var(--white);
-  background:#222;border:1px solid var(--seam);border-radius:2px;padding:2px 0;
-  font-variant-numeric:tabular-nums}
 .btn{
   display:block;width:100%;padding:7px;margin-top:7px;font-size:12.5px;color:var(--txt);
   background:linear-gradient(#3f3f3f,#333);border:1px solid var(--seam);border-radius:3px}
@@ -139,6 +126,7 @@ button{background:none;border:0;cursor:pointer}
 @media(hover:none){.r .x{opacity:1}}
 #add{margin-top:14px;font-size:12.5px;color:var(--dim);padding:6px 2px}
 #add:hover{color:var(--accent)}
+#empty{color:#3d3d3d;font-size:14px;padding:20px 4px 2px}
 
 /* ── filmstrip ────────────────────────────────────────────── */
 #film{
@@ -156,8 +144,8 @@ button{background:none;border:0;cursor:pointer}
 .cell .w{font-size:10.5px;letter-spacing:.3px}
 .cell .m{font-size:9.5px;color:var(--dimmer);letter-spacing:.4px}
 .cell.on .m{color:#ddd}
-.cell .bar{width:34px;height:2px;background:#3d3d3d;margin-top:3px;border-radius:1px;overflow:hidden}
-.cell .bar i{display:block;height:100%;background:var(--accent)}
+.cell .cnt{font-size:10px;color:var(--accent);min-height:14px;font-variant-numeric:tabular-nums}
+.cell.on .cnt{color:#fff}
 .cell.today{border-color:var(--accent-dim)}
 @media(max-width:900px){.cell{width:64px}.cell .d{font-size:17px}}
 
@@ -197,21 +185,8 @@ button{background:none;border:0;cursor:pointer}
   <aside id="right" class="panel">
     <div class="ph">הגדרות</div>
     <div class="grp">
-      <h4>טווח שעות</h4>
-      <div class="slider">
-        <label>מ־</label>
-        <input type="range" id="from" min="0" max="23" step="1">
-        <div class="val" id="fromV"></div>
-      </div>
-      <div class="slider">
-        <label>עד</label>
-        <input type="range" id="to" min="0" max="23" step="1">
-        <div class="val" id="toV"></div>
-      </div>
-      <p class="hint">הטווח קובע אילו שעות מוצגות בכל יום. אפשר תמיד להוסיף שעה משלך, ולערוך כל שעה בלחיצה עליה.</p>
-    </div>
-    <div class="grp">
       <h4>יום</h4>
+      <p class="hint" style="margin:0 0 9px">כל אירוע מקבל שעה משלו, והרשימה מסתדרת לפי הזמן. לחיצה על השעה משנה אותה.</p>
       <button class="btn" id="copyPrev">העתק מהיום הקודם</button>
       <button class="btn" id="clearDay">נקה את היום הזה</button>
     </div>
@@ -256,7 +231,8 @@ const parse=s=>new Date(s+'T00:00:00');
 const DAYS=(()=>{const a=[],d=parse(START),e=parse(END);while(d<=e){a.push(iso(d));d.setDate(d.getDate()+1)}return a})();
 const TODAY=iso(new Date());
 
-let S={v:1,updatedAt:0,range:{from:8,to:22},days:{}};
+/* days[date] = [{t:"HH:MM", x:"מה עושים"}], מוצג ממוין לפי t */
+let S={v:2,updatedAt:0,days:{}};
 let sel=DAYS.includes(TODAY)?TODAY:DAYS[0];
 let dirty=false, saveT, scrolledTo=null;
 let linked = !!(sbUrl() && sbKey());
@@ -299,65 +275,65 @@ async function pull(){
   if(!linked||dirty||document.activeElement?.tagName==='INPUT') return;
   try{
     const r=await R.load();
-    if(r && r.updatedAt>S.updatedAt){ S=r; localStorage.setItem(LS,JSON.stringify(S)); render(); }
+    if(r && r.updatedAt>S.updatedAt){ S=r; migrate(); localStorage.setItem(LS,JSON.stringify(S)); render(); }
     say('מסונכרן','ok');
   }catch(e){ say('אין חיבור — נשמר במכשיר','err'); }
 }
 
-/* ── times shown for a day: the range template ∪ saved hours ─ */
-function timesFor(day){
-  const set=new Set();
-  for(let h=S.range.from;h<=S.range.to;h++) set.add(String(h).padStart(2,'0')+':00');
-  Object.keys(S.days[day]||{}).forEach(t=>set.add(t));
-  return [...set].sort();
+const dayOf=day=>(S.days[day]||=[]);
+const filled=day=>(S.days[day]||[]).filter(e=>e.x.trim()).length;
+const sorted=day=>[...dayOf(day)].sort((a,b)=>a.t.localeCompare(b.t));
+
+/* v1 שמר {"HH:MM":"טקסט"} לכל יום — ממיר לרשימת אירועים */
+function migrate(){
+  for(const [day,v] of Object.entries(S.days||{}))
+    if(!Array.isArray(v)) S.days[day]=Object.entries(v).map(([t,x])=>({t,x}));
+  delete S.range;
 }
-const filled=day=>Object.values(S.days[day]||{}).filter(v=>v.trim()).length;
-const dayOf=day=>(S.days[day]||=({}));
-const put=(day,t,v)=>{ dayOf(day)[t]=v; touch(); };
 
 /* ── render ────────────────────────────────────────────────── */
-function render(){
+function render(focusEv){
   const d=parse(sel);
   $('#head h1').innerHTML=`יום <b>${WD[d.getDay()]}</b>, ${d.getDate()} ב${MO[d.getMonth()]}`;
   const n=filled(sel);
-  $('#head p').textContent = n ? `${n} פעילויות מתוכננות` : 'עדיין לא תוכנן כלום';
+  $('#head p').textContent = n ? `${n} אירועים ביום הזה` : 'עדיין לא תוכנן כלום';
 
   const rows=$('#rows'); rows.textContent='';
-  const data=S.days[sel]||{};
-  for(const t of timesFor(sel)){
-    const val=data[t]||'';
+  const evs=sorted(sel);
+  for(const ev of evs){
     const r=document.createElement('div');
-    r.className='r'+(val.trim()?' full':'');
-    r.innerHTML=`<input type="time" dir="ltr" value="${t}">
+    r.className='r'+(ev.x.trim()?' full':'');
+    r.innerHTML=`<input type="time" dir="ltr" value="${ev.t}">
       <input type="text" placeholder="מה עושים?" autocomplete="off">
-      <button class="x" title="הסר שורה">×</button>`;
+      <button class="x" title="מחק אירוע">×</button>`;
     const [time,text,del]=r.children;
-    text.value=val;
-    text.oninput =()=>{ put(sel,time.value,text.value); r.classList.toggle('full',!!text.value.trim()); paintStrip(); };
-    time.onchange=()=>{
-      const nt=time.value; if(!nt||nt===t){time.value=t;return}
-      const dd=dayOf(sel), old=dd[t]??'';
-      dd[nt]= dd[nt] ? dd[nt]+' · '+old : old;
-      delete dd[t]; touch(); render();
-    };
-    del.onclick =()=>{ delete dayOf(sel)[t]; touch(); render(); };
+    text.value=ev.x;
+    text.oninput =()=>{ ev.x=text.value; r.classList.toggle('full',!!text.value.trim());
+                        touch(); paintStrip(); };
+    // שינוי שעה ממקם מחדש את האירוע ברשימה, ולכן מצייר מחדש
+    time.onchange=()=>{ if(!time.value){time.value=ev.t;return}
+                        ev.t=time.value; touch(); render(ev); };
+    del.onclick =()=>{ const a=dayOf(sel); a.splice(a.indexOf(ev),1); touch(); render(); };
     rows.append(r);
+    if(ev===focusEv) queueMicrotask(()=>text.focus());
   }
+  if(!evs.length){
+    const p=document.createElement('p'); p.id='empty';
+    p.textContent='אין עדיין אירועים ביום הזה.';
+    rows.append(p);
+  }
+
   const add=document.createElement('button');
-  add.id='add'; add.textContent='+ הוסף שעה';
+  add.id='add'; add.textContent='+ הוסף אירוע';
   add.onclick=()=>{
-    const used=new Set(timesFor(sel));
-    // first free whole hour after the range, wrapping around the clock
-    for(let i=1;i<=24;i++){
-      const t=String((S.range.to+i)%24).padStart(2,'0')+':00';
-      if(!used.has(t)){ dayOf(sel)[t]=''; touch(); render(); return; }
-    }
+    const a=dayOf(sel);
+    const last=a.length ? Math.max(...a.map(e=>+e.t.slice(0,2))) : 8;
+    const ev={t:String(Math.min(last+1,23)).padStart(2,'0')+':00', x:''};
+    a.push(ev); touch(); render(ev);
   };
   rows.append(add);
 
   paintList(); paintStrip();
-  $('#from').value=S.range.from; $('#fromV').textContent=String(S.range.from).padStart(2,'0')+':00';
-  $('#to').value=S.range.to;     $('#toV').textContent=String(S.range.to).padStart(2,'0')+':00';
 }
 
 function paintList(){
@@ -380,12 +356,12 @@ function paintList(){
 function paintStrip(){
   const f=$('#film'); f.textContent='';
   for(const day of DAYS){
-    const d=parse(day), n=filled(day), tot=timesFor(day).length||1;
+    const d=parse(day), n=filled(day);
     const c=document.createElement('button');
     c.className='cell'+(day===sel?' on':'')+(day===TODAY?' today':'');
     c.innerHTML=`<span class="w">${WD[d.getDay()]}</span><span class="d">${d.getDate()}</span>
                  <span class="m">${MO[d.getMonth()].slice(0,3)}</span>
-                 <span class="bar"><i style="width:${Math.min(100,n/tot*100)}%"></i></span>`;
+                 <span class="cnt">${n||''}</span>`;
     c.onclick=()=>{sel=day;render()};
     f.append(c);
   }
@@ -394,15 +370,10 @@ function paintStrip(){
 }
 
 /* ── controls ──────────────────────────────────────────────── */
-$('#from').oninput=e=>{ S.range.from=+e.target.value;
-  if(S.range.to<S.range.from) S.range.to=S.range.from; touch(); render(); };
-$('#to').oninput=e=>{ S.range.to=+e.target.value;
-  if(S.range.from>S.range.to) S.range.from=S.range.to; touch(); render(); };
-
-$('#clearDay').onclick=()=>{ if(confirm('למחוק את כל מה שכתוב ביום הזה?')){ delete S.days[sel]; touch(); render(); } };
+$('#clearDay').onclick=()=>{ if(confirm('למחוק את כל האירועים ביום הזה?')){ delete S.days[sel]; touch(); render(); } };
 $('#copyPrev').onclick=()=>{
   const i=DAYS.indexOf(sel); if(i<1) return alert('אין יום קודם');
-  S.days[sel]={...S.days[DAYS[i-1]]}; touch(); render();
+  S.days[sel]=(S.days[DAYS[i-1]]||[]).map(e=>({...e})); touch(); render();
 };
 $('#exp').onclick=()=>{
   const a=document.createElement('a');
@@ -414,7 +385,7 @@ $('#imp').onclick=()=>{
   i.onchange=async()=>{ try{
       const o=JSON.parse(await i.files[0].text());
       if(!o.days) throw 0;
-      S={...S,...o}; touch(); render();
+      S={...S,...o}; migrate(); touch(); render();
     }catch(e){ alert('הקובץ לא תקין'); } };
   i.click();
 };
@@ -453,6 +424,7 @@ $('#link').onclick=async()=>{
 
 /* ── boot ──────────────────────────────────────────────────── */
 try{ const c=localStorage.getItem(LS); if(c) S={...S,...JSON.parse(c)}; }catch(e){}
+migrate();
 syncUI();
 say(linked?'מתחבר…':'נשמר במכשיר', linked?'busy':'ok');
 render();
