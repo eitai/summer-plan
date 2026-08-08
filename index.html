@@ -43,7 +43,7 @@ button{background:none;border:0;cursor:pointer}
        grid-template-areas:"top top top" "side cal day"}
   #cal{grid-area:cal}
   #day{grid-area:day;border-inline-start:1px solid var(--line)}
-  #tabs,#back{display:none}
+  #back{display:none}
 }
 @media(max-width:900px){
   #app{grid-template-columns:1fr;grid-template-areas:"top" "main"}
@@ -60,9 +60,6 @@ button{background:none;border:0;cursor:pointer}
 #brand em{font-style:normal;color:var(--violet)}
 #brand span{font-weight:300;color:var(--sub);font-size:13px;margin-inline-start:10px}
 #top .sp{flex:1}
-#tabs{display:flex;border:1px solid var(--border)}
-#tabs button{padding:6px 18px;font-size:14px;font-weight:500;color:var(--sub)}
-#tabs button.on{background:var(--violet);color:#fff}
 #status{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:6px;white-space:nowrap}
 #status::before{content:"";width:7px;height:7px;border-radius:50%;background:#c9c4d6}
 #status.ok::before{background:var(--violet)}
@@ -177,12 +174,8 @@ button{background:none;border:0;cursor:pointer}
 
 <div id="app">
   <header id="top">
-    <div id="brand">תוכנית <em>הקיץ</em><span>8 באוגוסט – 1 בספטמבר 2026</span></div>
+    <div id="brand">תוכנית <em>הקיץ</em><span>8–31 באוגוסט 2026</span></div>
     <div class="sp"></div>
-    <div id="tabs">
-      <button id="tabCal">יומן</button>
-      <button id="tabDay">יום</button>
-    </div>
     <div id="status">טוען…</div>
     <button id="gear" title="תפריט">☰</button>
   </header>
@@ -236,7 +229,7 @@ const sbUrl = () => (localStorage.getItem(URLK) || CONFIG.url || '')
 const sbKey = () =>  localStorage.getItem(KEYK) || CONFIG.key || '';
 /* ══════════════════════════════════════════════════════════ */
 
-const START='2026-08-08', END='2026-09-01', LS='summer-plan';
+const START='2026-08-08', END='2026-08-31', LS='summer-plan';
 const WD=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
 const WDS=['א','ב','ג','ד','ה','ו','ש'];
 const MO=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
@@ -297,15 +290,25 @@ async function pull(){
   }catch(e){ say('אין חיבור — נשמר במכשיר','err'); }
 }
 
-const dayOf=day=>(S.days[day]||=[]);
+const dayOf=day=>(S.days[day]||=[]);          // יוצר את היום — רק בעריכה
 const filled=day=>(S.days[day]||[]).filter(e=>e.x.trim()).length;
-const sorted=day=>[...dayOf(day)].sort((a,b)=>a.t.localeCompare(b.t));
+const sorted=day=>[...(S.days[day]||[])].sort((a,b)=>a.t.localeCompare(b.t));
+
+// ממיין את היום במקום, ומצייר מחדש רק אם הסדר באמת השתנה
+function resort(focus){
+  const a=dayOf(sel), before=a.map(e=>e.t).join('|');
+  a.sort((x,y)=>x.t.localeCompare(y.t));
+  a.map(e=>e.t).join('|')!==before ? render(focus) : paintCal();
+}
 
 /* v1 שמר {"HH:MM":"טקסט"} לכל יום; v2 היה [{t,x}] בלי שעת סיום */
 function migrate(){
-  for(const [day,v] of Object.entries(S.days||{}))
-    S.days[day]=(Array.isArray(v) ? v : Object.entries(v).map(([t,x])=>({t,x})))
-                  .map(ev=>({t:ev.t, e:ev.e||'', x:ev.x||''}));
+  for(const [day,v] of Object.entries(S.days||{})){
+    const evs=(Array.isArray(v) ? v : Object.entries(v).map(([t,x])=>({t,x})))
+                .map(ev=>({t:ev.t, e:ev.e||'', x:ev.x||''}))
+                .sort((a,b)=>a.t.localeCompare(b.t));
+    evs.length ? S.days[day]=evs : delete S.days[day];   // לא לשמור ימים ריקים
+  }
   delete S.range;
   S.v=3;
 }
@@ -319,8 +322,6 @@ function render(focusEv){
   const split=wide.matches;
   $('#cal').hidden = !split && view!=='cal';
   $('#day').hidden = !split && view!=='day';
-  $('#tabCal').className = view==='cal'?'on':'';
-  $('#tabDay').className = view==='day'?'on':'';
   paintCal(); paintDay(focusEv);
   paintStats();
 }
@@ -377,10 +378,13 @@ function paintDay(focusEv){
     // רק היומן מצויר מחדש בהקלדה — ציור השורות היה הורס את מיקום הסמן
     text.oninput =()=>{ ev.x=text.value; r.classList.toggle('full',!!text.value.trim());
                         touch(); if(wide.matches) paintCal(); };
-    // שינוי שעת ההתחלה ממקם מחדש את האירוע, ולכן מצייר מחדש
-    from.onchange=()=>{ if(!from.value){from.value=ev.t;return}
-                        ev.t=from.value; touch(); render(ev); };
-    to.onchange  =()=>{ ev.e=to.value; touch(); render(); };
+    // שדה time יורה change כבר כשהערך תקין, כלומר באמצע ההקלדה. ציור מחדש
+    // שם היה הורס את השדה תוך כדי — לכן change רק שומר, והמיון קורה ב-blur.
+    from.onchange=()=>{ if(from.value){ ev.t=from.value; touch(); } };
+    to.onchange  =()=>{ ev.e=to.value; touch(); };
+    from.onblur  =()=>{ if(!from.value){ from.value=ev.t; return }
+                        if(from.value!==ev.t){ ev.t=from.value; touch(); }
+                        resort(ev); };
     del.onclick  =()=>{ const a=dayOf(sel); a.splice(a.indexOf(ev),1); touch(); render(); };
     rows.append(r);
     if(ev===focusEv) queueMicrotask(()=>text.focus());
@@ -413,8 +417,6 @@ const go=n=>{ const i=DAYS.indexOf(sel)+n;
 $('#prev').onclick=()=>go(-1);
 $('#next').onclick=()=>go(1);
 $('#back').onclick=()=>{ view='cal'; render(); };
-$('#tabCal').onclick=()=>{ view='cal'; render(); };
-$('#tabDay').onclick=()=>{ view='day'; render(); };
 
 $('#clearDay').onclick=()=>{
   if(confirm(`למחוק את כל האירועים ב-${parse(sel).getDate()} ב${MO[parse(sel).getMonth()]}?`)){
