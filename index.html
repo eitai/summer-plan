@@ -4,161 +4,155 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>תוכנית הקיץ</title>
-<meta name="theme-color" content="#262626">
+<meta name="theme-color" content="#7c3aed">
 <meta name="robots" content="noindex,nofollow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@200;300;400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
-/* ── Lightroom Classic palette ────────────────────────────── */
+/* ── Light Studio: violet on white, radius 0 ──────────────── */
 :root{
-  --bg:#262626; --panel:#2f2f2f; --raise:#383838; --loupe:#1c1c1c;
-  --seam:#171717; --edge:#404040;
-  --txt:#bdbdbd; --dim:#8a8a8a; --dimmer:#666; --white:#e9e9e9;
-  --accent:#4b9fd5; --accent-dim:#2f6f96;
-  --row:44px;
+  --bg:#ffffff; --muted:#f5f3fb; --violet:#7c3aed; --violet-100:#ede9fe;
+  --border:#e4def2; --ink:#111111; --sub:#5c5c66; --line:#e8e8ec;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{
-  background:var(--bg); color:var(--txt);
-  font:400 14px/1.45 Assistant,-apple-system,Segoe UI,sans-serif;
+  background:var(--bg); color:var(--ink);
+  font:400 15px/1.5 Heebo,-apple-system,Segoe UI,sans-serif;
   -webkit-font-smoothing:antialiased; overflow:hidden;
 }
 button,input{font:inherit;color:inherit}
 button{background:none;border:0;cursor:pointer}
-::selection{background:var(--accent-dim);color:#fff}
+::selection{background:var(--violet-100)}
 
-/* ── shell ────────────────────────────────────────────────── */
 #app{
   height:100dvh; display:grid;
-  grid-template-columns:248px 1fr 268px;
-  grid-template-rows:46px 1fr 112px;
-  grid-template-areas:"left top right" "left main right" "film film film";
+  grid-template-columns:1fr 280px;
+  grid-template-rows:58px 1fr;
+  grid-template-areas:"top top" "main right";
 }
 @media(max-width:900px){
-  #app{grid-template-columns:1fr;grid-template-rows:46px 1fr 98px;
-       grid-template-areas:"top" "main" "film"}
-  #left{display:none}
+  #app{grid-template-columns:1fr;grid-template-areas:"top" "main"}
 }
 
 /* ── top bar ──────────────────────────────────────────────── */
 #top{
-  grid-area:top; background:var(--bg); border-bottom:1px solid var(--seam);
-  display:flex; align-items:center; gap:14px; padding:0 16px;
+  grid-area:top; display:flex; align-items:center; gap:16px;
+  padding:0 20px; border-bottom:1px solid var(--line); background:var(--bg);
 }
-#brand{font-weight:700;letter-spacing:.2px;color:var(--white);font-size:15px}
-#brand span{font-weight:300;color:var(--dimmer);margin-inline-start:10px;font-size:12.5px}
+#brand{font-weight:700;font-size:17px;letter-spacing:-.2px}
+#brand em{font-style:normal;color:var(--violet)}
+#brand span{font-weight:300;color:var(--sub);font-size:13px;margin-inline-start:10px}
 #top .sp{flex:1}
-#status{
-  font-size:11.5px;color:var(--dimmer);letter-spacing:.3px;
-  display:flex;align-items:center;gap:6px;white-space:nowrap;
+#tabs{display:flex;border:1px solid var(--border)}
+#tabs button{padding:6px 18px;font-size:14px;font-weight:500;color:var(--sub)}
+#tabs button.on{background:var(--violet);color:#fff}
+#status{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:6px;white-space:nowrap}
+#status::before{content:"";width:7px;height:7px;border-radius:50%;background:#c9c4d6}
+#status.ok::before{background:var(--violet)}
+#status.busy::before{background:#f5a623}
+#status.err::before{background:#c0392b}
+#gear{display:none;font-size:19px;color:var(--sub);padding:4px 6px}
+@media(max-width:900px){
+  #gear{display:block} #brand span{display:none} #status{font-size:0;gap:0}
+  #status::before{width:9px;height:9px}
 }
-#status::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--dimmer)}
-#status.ok::before{background:#5c9e5c}
-#status.busy::before{background:var(--accent)}
-#status.err::before{background:#c46}
-#gear{display:none;font-size:16px;color:var(--dim);padding:4px 6px}
-#gear:hover{color:var(--white)}
-@media(max-width:900px){#gear{display:block} #brand span{display:none}}
 
-/* ── side panels ──────────────────────────────────────────── */
-.panel{background:var(--panel);overflow-y:auto;overscroll-behavior:contain}
-#left{grid-area:left;border-inline-end:1px solid var(--seam)}
-#right{grid-area:right;border-inline-start:1px solid var(--seam)}
-.ph{
-  padding:11px 14px 9px; font-size:10.5px; font-weight:700; letter-spacing:1.4px;
-  color:var(--dim); text-transform:uppercase;
-  background:var(--bg); border-bottom:1px solid var(--seam);
-  position:sticky; top:0; z-index:2;
-}
-.pb{padding:8px 0 14px}
+/* ── main ─────────────────────────────────────────────────── */
+#main{grid-area:main;overflow-y:auto;background:var(--bg)}
 
-/* folder-tree day list */
-.month{padding:9px 14px 5px;font-size:12px;color:var(--dim);font-weight:600}
-.dayrow{
-  display:flex;align-items:center;gap:9px;width:100%;
-  padding:6px 14px;text-align:start;color:var(--txt);font-size:13px;
-}
-.dayrow:hover{background:#383838}
-.dayrow.on{background:#454545;color:var(--white)}
-.dayrow .num{width:20px;color:var(--dim);font-variant-numeric:tabular-nums;font-size:12px}
-.dayrow.on .num{color:var(--white)}
-.dayrow .cnt{margin-inline-start:auto;font-size:11px;color:var(--dimmer);font-variant-numeric:tabular-nums}
-.dayrow.today .num{color:var(--accent)}
-
-/* right panel controls */
-.grp{border-bottom:1px solid var(--seam);padding:12px 14px 15px}
-.grp h4{font-size:11px;font-weight:700;letter-spacing:1.1px;color:var(--dim);margin-bottom:11px;text-transform:uppercase}
-.btn{
-  display:block;width:100%;padding:7px;margin-top:7px;font-size:12.5px;color:var(--txt);
-  background:linear-gradient(#3f3f3f,#333);border:1px solid var(--seam);border-radius:3px}
-.btn:hover{background:linear-gradient(#484848,#3b3b3b);color:var(--white)}
-.hint{font-size:11.5px;color:var(--dimmer);line-height:1.6;margin-top:9px}
-
-/* ── loupe / main ─────────────────────────────────────────── */
-#main{grid-area:main;background:var(--loupe);overflow-y:auto;overscroll-behavior:contain}
-#head{
-  padding:22px 30px 16px;border-bottom:1px solid #111;
-  position:sticky;top:0;background:var(--loupe);z-index:3}
-#head h1{font-size:26px;font-weight:300;color:var(--white);letter-spacing:-.2px}
-#head h1 b{font-weight:700}
-#head p{font-size:12px;color:var(--dimmer);margin-top:3px}
-#rows{padding:14px 30px 40px;max-width:780px}
-@media(max-width:900px){#head{padding:16px 16px 12px}#head h1{font-size:20px}#rows{padding:10px 12px 28px}}
-
-.r{display:flex;align-items:center;gap:10px;border-bottom:1px solid #232323;min-height:var(--row)}
-.r:hover{background:#202020}
-.r input[type=time]{
-  width:74px;flex:none;background:none;border:0;color:var(--dim);
-  font-size:12.5px;font-variant-numeric:tabular-nums;padding:4px 2px;cursor:pointer}
-.r input[type=time]:hover{color:var(--white)}
-.r input[type=time]:focus{outline:1px solid var(--accent-dim);color:var(--white)}
-.r input[type=text]{
-  flex:1;background:none;border:0;padding:11px 6px;color:var(--txt);font-size:14.5px;min-width:0}
-.r input[type=text]:focus{outline:none;color:var(--white)}
-.r input[type=text]::placeholder{color:#3a3a3a}
-.r.full input[type=time]{color:var(--accent)}
-.r .x{
-  flex:none;width:26px;color:#3a3a3a;font-size:15px;line-height:1;opacity:0;transition:opacity .1s}
-.r:hover .x,.r:focus-within .x{opacity:1}
-.r .x:hover{color:#c46}
-@media(hover:none){.r .x{opacity:1}}
-#add{margin-top:14px;font-size:12.5px;color:var(--dim);padding:6px 2px}
-#add:hover{color:var(--accent)}
-#empty{color:#3d3d3d;font-size:14px;padding:20px 4px 2px}
-
-/* ── filmstrip ────────────────────────────────────────────── */
-#film{
-  grid-area:film;background:#1a1a1a;border-top:1px solid var(--seam);
-  display:flex;gap:1px;overflow-x:auto;overflow-y:hidden;padding:9px;
-  scrollbar-width:thin;scroll-behavior:smooth}
+/* calendar */
+#cal{padding:22px 24px 60px;max-width:1150px}
+.mo{margin-bottom:34px}
+.mo h3{font-size:20px;font-weight:700;margin-bottom:14px}
+.wd,.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
+.wd span{
+  padding:7px 0;text-align:center;font-size:12px;font-weight:500;
+  color:var(--sub);background:var(--muted)}
+.grid{background:var(--line);border:1px solid var(--line)}
 .cell{
-  flex:none;width:78px;background:#2b2b2b;border:1px solid #141414;border-radius:2px;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
-  color:var(--dim);padding:6px 4px}
-.cell:hover{background:#363636}
-.cell.on{background:#5a5a5a;color:var(--white);border-color:#777}
-.cell .d{font-size:20px;font-weight:300;font-variant-numeric:tabular-nums;line-height:1.1}
-.cell.on .d{color:#fff}
-.cell .w{font-size:10.5px;letter-spacing:.3px}
-.cell .m{font-size:9.5px;color:var(--dimmer);letter-spacing:.4px}
-.cell.on .m{color:#ddd}
-.cell .cnt{font-size:10px;color:var(--accent);min-height:14px;font-variant-numeric:tabular-nums}
-.cell.on .cnt{color:#fff}
-.cell.today{border-color:var(--accent-dim)}
-@media(max-width:900px){.cell{width:64px}.cell .d{font-size:17px}}
+  background:var(--bg);min-height:104px;padding:7px 8px;text-align:start;
+  display:flex;flex-direction:column;gap:3px;overflow:hidden;align-items:stretch}
+.cell.pad{background:var(--muted);cursor:default}
+.cell:not(.pad):hover{background:var(--muted)}
+.cell .n{font-size:14px;font-weight:500;color:var(--sub);align-self:flex-start}
+.cell.today .n{
+  background:var(--violet);color:#fff;width:24px;height:24px;
+  display:grid;place-items:center;font-weight:700}
+.cell .ev{
+  font-size:11.5px;line-height:1.35;background:var(--violet-100);
+  padding:2px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cell .ev b{color:var(--violet);font-weight:700;margin-inline-end:4px}
+.cell .more{font-size:11px;color:var(--sub);padding-inline-start:5px}
+@media(max-width:900px){
+  #cal{padding:14px 10px 50px}
+  .cell{min-height:78px;padding:4px 4px;gap:2px}
+  .cell .ev{font-size:10px;padding:1px 3px}
+  .cell .ev b{display:block;margin:0}
+}
 
-/* ── mobile settings drawer ───────────────────────────────── */
+/* day view */
+#day{padding:26px 30px 70px;max-width:760px}
+#dayhead{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+#dayhead h1{font-size:27px;font-weight:700;letter-spacing:-.4px}
+#dayhead h1 em{font-style:normal;color:var(--violet)}
+.nav{
+  width:32px;height:32px;border:1px solid var(--border);display:grid;
+  place-items:center;color:var(--sub);font-size:15px;flex:none}
+.nav:hover{border-color:var(--violet);color:var(--violet)}
+#daysub{font-size:13.5px;color:var(--sub);margin-bottom:20px}
+#back{font-size:13.5px;color:var(--violet);font-weight:500;margin-bottom:18px;display:block}
+
+.r{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);padding:7px 0}
+.r:hover{background:var(--muted)}
+.times{display:flex;align-items:center;gap:2px;flex:none}
+.r input[type=time]{
+  width:66px;background:none;border:1px solid transparent;color:var(--sub);
+  font-size:13px;font-variant-numeric:tabular-nums;padding:4px 3px;cursor:pointer}
+.r input[type=time]:hover{border-color:var(--border)}
+.r input[type=time]:focus{outline:none;border-color:var(--violet);color:var(--ink)}
+.times i{color:#c9c4d6;font-style:normal;font-size:12px}
+.r input[type=text]{
+  flex:1;background:none;border:0;padding:8px 8px;font-size:15.5px;min-width:0}
+.r input[type=text]:focus{outline:none}
+.r input[type=text]::placeholder{color:#c9c4d6}
+.r.full input[type=time]{color:var(--violet);font-weight:500}
+.r .x{flex:none;width:28px;color:#d6d1e0;font-size:18px;line-height:1}
+.r:hover .x,.r:focus-within .x{color:var(--sub)}
+.r .x:hover{color:#c0392b}
+#add{
+  margin-top:18px;font-size:14px;color:var(--violet);font-weight:500;
+  padding:9px 16px;border:1px solid var(--border)}
+#add:hover{background:var(--violet-100);border-color:var(--violet)}
+#empty{color:var(--sub);font-size:14.5px;padding:22px 0 4px}
+
+/* ── right panel ──────────────────────────────────────────── */
+#right{
+  grid-area:right;border-inline-start:1px solid var(--line);
+  overflow-y:auto;background:var(--bg)}
+.grp{padding:16px 18px;border-bottom:1px solid var(--line)}
+.grp h4{
+  font-size:11px;font-weight:700;letter-spacing:1.2px;color:var(--sub);
+  text-transform:uppercase;margin-bottom:12px}
+.btn{
+  display:block;width:100%;padding:9px;margin-top:7px;font-size:14px;
+  border:1px solid var(--border);color:var(--ink);font-weight:500}
+.btn:hover{background:var(--muted);border-color:var(--violet);color:var(--violet)}
+.hint{font-size:12.5px;color:var(--sub);line-height:1.65;margin-top:10px}
+.stat{display:flex;justify-content:space-between;font-size:14px;padding:4px 0}
+.stat b{color:var(--violet);font-weight:700}
+
 @media(max-width:900px){
   #right{
-    position:fixed;inset:0 auto 0 0;width:min(300px,86vw);z-index:20;
-    transform:translateX(-100%);transition:transform .18s ease;
-    box-shadow:0 0 40px #000}
-  html[dir=rtl] #right{inset:0 0 0 auto;transform:translateX(100%)}
-  #right.open{transform:none!important}
-  #veil{position:fixed;inset:0;background:#000a;z-index:19;display:none}
+    position:fixed;inset:0 0 0 auto;width:min(310px,86vw);z-index:20;
+    transform:translateX(100%);transition:transform .18s ease;
+    box-shadow:-8px 0 30px #11111122}
+  #right.open{transform:none}
+  #veil{position:fixed;inset:0;background:#11111155;z-index:19;display:none}
   #veil.open{display:block}
+  #day{padding:18px 14px 60px}
+  #dayhead h1{font-size:21px}
 }
 </style>
 </head>
@@ -166,53 +160,56 @@ button{background:none;border:0;cursor:pointer}
 
 <div id="app">
   <header id="top">
-    <div id="brand">תוכנית הקיץ <span>8 באוגוסט – 1 בספטמבר 2026</span></div>
+    <div id="brand">תוכנית <em>הקיץ</em><span>8 באוגוסט – 1 בספטמבר 2026</span></div>
     <div class="sp"></div>
+    <div id="tabs">
+      <button id="tabCal">יומן</button>
+      <button id="tabDay">יום</button>
+    </div>
     <div id="status">טוען…</div>
-    <button id="gear" title="הגדרות">⚙</button>
+    <button id="gear" title="תפריט">☰</button>
   </header>
 
-  <aside id="left" class="panel">
-    <div class="ph">ימים</div>
-    <div class="pb" id="daylist"></div>
-  </aside>
-
   <main id="main">
-    <div id="head"><h1></h1><p></p></div>
-    <div id="rows"></div>
+    <div id="cal"></div>
+    <div id="day" hidden>
+      <a id="back">← חזרה ליומן</a>
+      <div id="dayhead">
+        <button class="nav" id="prev" title="יום קודם">›</button>
+        <h1></h1>
+        <button class="nav" id="next" title="יום הבא">‹</button>
+      </div>
+      <p id="daysub"></p>
+      <div id="rows"></div>
+    </div>
   </main>
 
-  <aside id="right" class="panel">
-    <div class="ph">הגדרות</div>
+  <aside id="right">
     <div class="grp">
-      <h4>יום</h4>
-      <p class="hint" style="margin:0 0 9px">כל אירוע מקבל שעה משלו, והרשימה מסתדרת לפי הזמן. לחיצה על השעה משנה אותה.</p>
-      <button class="btn" id="copyPrev">העתק מהיום הקודם</button>
-      <button class="btn" id="clearDay">נקה את היום הזה</button>
+      <h4>סיכום</h4>
+      <div class="stat"><span>ימים בתוכנית</span><b id="sDays">0</b></div>
+      <div class="stat"><span>אירועים בסך הכל</span><b id="sEv">0</b></div>
+      <div class="stat"><span>ימים ריקים</span><b id="sEmpty">0</b></div>
     </div>
     <div class="grp">
-      <h4>סנכרון</h4>
-      <button class="btn" id="link"></button>
-      <p class="hint" id="syncHint"></p>
+      <h4>היום הנבחר</h4>
+      <p class="hint" style="margin:0 0 10px">לכל אירוע שעת התחלה, ואפשר להוסיף גם שעת סיום. הרשימה מסתדרת לפי שעת ההתחלה.</p>
+      <button class="btn" id="copyPrev">העתק מהיום הקודם</button>
+      <button class="btn" id="clearDay">נקה את היום הזה</button>
     </div>
     <div class="grp">
       <h4>גיבוי</h4>
       <button class="btn" id="exp">ייצוא לקובץ</button>
       <button class="btn" id="imp">ייבוא מקובץ</button>
+      <p class="hint" id="syncHint"></p>
     </div>
   </aside>
-
-  <div id="film"></div>
 </div>
 <div id="veil"></div>
 
 <script>
 /* ═══ סנכרון ═══════════════════════════════════════════════
-   הנתונים נשמרים כמסמך JSON יחיד בשורה אחת ב-Supabase.
-   כברירת מחדל הכתובת והמפתח נשמרים ב-localStorage של כל מכשיר
-   בנפרד ("חבר סנכרון" בפאנל ההגדרות) — כדי שלא ישבו בקוד של
-   אתר ציבורי. אם לא אכפת שהלוח יהיה גלוי, אפשר למלא אותם כאן
-   פעם אחת ואז שום מכשיר לא צריך להתחבר.                    */
+   כל הלוח נשמר כמסמך JSON יחיד בשורה אחת בטבלת plan ב-Supabase. */
 const CONFIG = { url:"https://xzeshpxkgwrgsfjogtho.supabase.co",
                  key:"sb_publishable_6CQcIi4__CXRgadDg9zIvw_yQrJpPA6" };
 const URLK='sp-url', KEYK='sp-key';
@@ -224,17 +221,20 @@ const sbKey = () =>  localStorage.getItem(KEYK) || CONFIG.key || '';
 
 const START='2026-08-08', END='2026-09-01', LS='summer-plan';
 const WD=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+const WDS=['א','ב','ג','ד','ה','ו','ש'];
 const MO=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
 
 const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const parse=s=>new Date(s+'T00:00:00');
 const DAYS=(()=>{const a=[],d=parse(START),e=parse(END);while(d<=e){a.push(iso(d));d.setDate(d.getDate()+1)}return a})();
 const TODAY=iso(new Date());
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-/* days[date] = [{t:"HH:MM", x:"מה עושים"}], מוצג ממוין לפי t */
-let S={v:2,updatedAt:0,days:{}};
+/* days[date] = [{t:"HH:MM", e:"HH:MM"|"", x:"מה עושים"}], ממוין לפי t */
+let S={v:3,updatedAt:0,days:{}};
 let sel=DAYS.includes(TODAY)?TODAY:DAYS[0];
-let dirty=false, saveT, scrolledTo=null;
+let view='cal';
+let dirty=false, saveT;
 let linked = !!(sbUrl() && sbKey());
 
 /* ── remote: the whole doc as jsonb in plan(id=1) ─────────── */
@@ -283,98 +283,121 @@ async function pull(){
 const dayOf=day=>(S.days[day]||=[]);
 const filled=day=>(S.days[day]||[]).filter(e=>e.x.trim()).length;
 const sorted=day=>[...dayOf(day)].sort((a,b)=>a.t.localeCompare(b.t));
+const span=ev=>ev.e ? `${ev.t}–${ev.e}` : ev.t;
 
-/* v1 שמר {"HH:MM":"טקסט"} לכל יום — ממיר לרשימת אירועים */
+/* v1 שמר {"HH:MM":"טקסט"} לכל יום; v2 היה [{t,x}] בלי שעת סיום */
 function migrate(){
   for(const [day,v] of Object.entries(S.days||{}))
-    if(!Array.isArray(v)) S.days[day]=Object.entries(v).map(([t,x])=>({t,x}));
+    S.days[day]=(Array.isArray(v) ? v : Object.entries(v).map(([t,x])=>({t,x})))
+                  .map(ev=>({t:ev.t, e:ev.e||'', x:ev.x||''}));
   delete S.range;
-  S.v=2;
+  S.v=3;
 }
 
 /* ── render ────────────────────────────────────────────────── */
 function render(focusEv){
-  const d=parse(sel);
-  $('#head h1').innerHTML=`יום <b>${WD[d.getDay()]}</b>, ${d.getDate()} ב${MO[d.getMonth()]}`;
-  const n=filled(sel);
-  $('#head p').textContent = n ? `${n} אירועים ביום הזה` : 'עדיין לא תוכנן כלום';
+  $('#cal').hidden = view!=='cal';
+  $('#day').hidden = view!=='day';
+  $('#tabCal').className = view==='cal'?'on':'';
+  $('#tabDay').className = view==='day'?'on':'';
+  view==='cal' ? paintCal() : paintDay(focusEv);
+  paintStats();
+}
+
+function paintCal(){
+  const box=$('#cal'); box.textContent='';
+  for(const m of [...new Set(DAYS.map(d=>d.slice(0,7)))]){
+    const days=DAYS.filter(d=>d.startsWith(m)), first=parse(days[0]);
+    const sec=document.createElement('section'); sec.className='mo';
+    sec.innerHTML=`<h3>${MO[first.getMonth()]} ${first.getFullYear()}</h3>
+      <div class="wd">${WDS.map(w=>`<span>${w}</span>`).join('')}</div>`;
+    const grid=document.createElement('div'); grid.className='grid';
+    for(let i=0;i<first.getDay();i++){
+      const p=document.createElement('div'); p.className='cell pad'; grid.append(p);
+    }
+    for(const day of days){
+      const evs=sorted(day).filter(e=>e.x.trim());
+      const c=document.createElement('button');
+      c.className='cell'+(day===TODAY?' today':'');
+      c.innerHTML=`<span class="n">${parse(day).getDate()}</span>`
+        + evs.slice(0,3).map(e=>`<span class="ev"><b>${esc(span(e))}</b>${esc(e.x)}</span>`).join('')
+        + (evs.length>3?`<span class="more">ועוד ${evs.length-3}</span>`:'');
+      c.onclick=()=>{ sel=day; view='day'; render(); };
+      grid.append(c);
+    }
+    sec.append(grid); box.append(sec);
+  }
+}
+
+function paintDay(focusEv){
+  const d=parse(sel), n=filled(sel);
+  $('#dayhead h1').innerHTML=`יום <em>${WD[d.getDay()]}</em>, ${d.getDate()} ב${MO[d.getMonth()]}`;
+  $('#daysub').textContent = n ? `${n} אירועים` : 'עדיין לא תוכנן כלום';
+  $('#prev').disabled = DAYS.indexOf(sel)===0;
+  $('#next').disabled = DAYS.indexOf(sel)===DAYS.length-1;
 
   const rows=$('#rows'); rows.textContent='';
   const evs=sorted(sel);
   for(const ev of evs){
     const r=document.createElement('div');
     r.className='r'+(ev.x.trim()?' full':'');
-    r.innerHTML=`<input type="time" dir="ltr" value="${ev.t}">
+    r.innerHTML=`<span class="times">
+        <input type="time" dir="ltr" value="${ev.t}" title="שעת התחלה">
+        <i>–</i>
+        <input type="time" dir="ltr" value="${ev.e}" title="שעת סיום (לא חובה)">
+      </span>
       <input type="text" placeholder="מה עושים?" autocomplete="off">
       <button class="x" title="מחק אירוע">×</button>`;
-    const [time,text,del]=r.children;
+    const [times,text,del]=r.children;
+    const [from,,to]=times.children;
     text.value=ev.x;
-    text.oninput =()=>{ ev.x=text.value; r.classList.toggle('full',!!text.value.trim());
-                        touch(); paintStrip(); };
-    // שינוי שעה ממקם מחדש את האירוע ברשימה, ולכן מצייר מחדש
-    time.onchange=()=>{ if(!time.value){time.value=ev.t;return}
-                        ev.t=time.value; touch(); render(ev); };
-    del.onclick =()=>{ const a=dayOf(sel); a.splice(a.indexOf(ev),1); touch(); render(); };
+    text.oninput =()=>{ ev.x=text.value; r.classList.toggle('full',!!text.value.trim()); touch(); };
+    // שינוי שעת ההתחלה ממקם מחדש את האירוע, ולכן מצייר מחדש
+    from.onchange=()=>{ if(!from.value){from.value=ev.t;return}
+                        ev.t=from.value; touch(); paintDay(ev); };
+    to.onchange  =()=>{ ev.e=to.value; touch(); };
+    del.onclick  =()=>{ const a=dayOf(sel); a.splice(a.indexOf(ev),1); touch(); paintDay(); };
     rows.append(r);
     if(ev===focusEv) queueMicrotask(()=>text.focus());
   }
   if(!evs.length){
     const p=document.createElement('p'); p.id='empty';
-    p.textContent='אין עדיין אירועים ביום הזה.';
-    rows.append(p);
+    p.textContent='אין עדיין אירועים ביום הזה.'; rows.append(p);
   }
-
   const add=document.createElement('button');
   add.id='add'; add.textContent='+ הוסף אירוע';
   add.onclick=()=>{
     const a=dayOf(sel);
     const last=a.length ? Math.max(...a.map(e=>+e.t.slice(0,2))) : 8;
-    const ev={t:String(Math.min(last+1,23)).padStart(2,'0')+':00', x:''};
-    a.push(ev); touch(); render(ev);
+    const ev={t:String(Math.min(last+1,23)).padStart(2,'0')+':00', e:'', x:''};
+    a.push(ev); touch(); paintDay(ev);
   };
   rows.append(add);
-
-  paintList(); paintStrip();
+  paintStats();
 }
 
-function paintList(){
-  const box=$('#daylist'); box.textContent=''; let m=-1;
-  for(const day of DAYS){
-    const d=parse(day);
-    if(d.getMonth()!==m){ m=d.getMonth();
-      const h=document.createElement('div'); h.className='month';
-      h.textContent=MO[m]+' '+d.getFullYear(); box.append(h); }
-    const b=document.createElement('button');
-    b.className='dayrow'+(day===sel?' on':'')+(day===TODAY?' today':'');
-    const n=filled(day);
-    b.innerHTML=`<span class="num">${d.getDate()}</span><span>${WD[d.getDay()]}</span>
-                 <span class="cnt">${n||''}</span>`;
-    b.onclick=()=>{sel=day;render()};
-    box.append(b);
-  }
-}
-
-function paintStrip(){
-  const f=$('#film'); f.textContent='';
-  for(const day of DAYS){
-    const d=parse(day), n=filled(day);
-    const c=document.createElement('button');
-    c.className='cell'+(day===sel?' on':'')+(day===TODAY?' today':'');
-    c.innerHTML=`<span class="w">${WD[d.getDay()]}</span><span class="d">${d.getDate()}</span>
-                 <span class="m">${MO[d.getMonth()].slice(0,3)}</span>
-                 <span class="cnt">${n||''}</span>`;
-    c.onclick=()=>{sel=day;render()};
-    f.append(c);
-  }
-  if(scrolledTo!==sel){ scrolledTo=sel;
-    f.querySelector('.on')?.scrollIntoView({block:'nearest',inline:'center'}); }
+function paintStats(){
+  const evs=DAYS.reduce((s,d)=>s+filled(d),0);
+  $('#sDays').textContent=DAYS.length;
+  $('#sEv').textContent=evs;
+  $('#sEmpty').textContent=DAYS.filter(d=>!filled(d)).length;
 }
 
 /* ── controls ──────────────────────────────────────────────── */
-$('#clearDay').onclick=()=>{ if(confirm('למחוק את כל האירועים ביום הזה?')){ delete S.days[sel]; touch(); render(); } };
+const go=n=>{ const i=DAYS.indexOf(sel)+n;
+              if(i>=0&&i<DAYS.length){ sel=DAYS[i]; paintDay(); } };
+$('#prev').onclick=()=>go(-1);
+$('#next').onclick=()=>go(1);
+$('#back').onclick=()=>{ view='cal'; render(); };
+$('#tabCal').onclick=()=>{ view='cal'; render(); };
+$('#tabDay').onclick=()=>{ view='day'; render(); };
+
+$('#clearDay').onclick=()=>{
+  if(confirm(`למחוק את כל האירועים ב-${parse(sel).getDate()} ב${MO[parse(sel).getMonth()]}?`)){
+    delete S.days[sel]; touch(); render(); } };
 $('#copyPrev').onclick=()=>{
   const i=DAYS.indexOf(sel); if(i<1) return alert('אין יום קודם');
-  S.days[sel]=(S.days[DAYS[i-1]]||[]).map(e=>({...e})); touch(); render();
+  S.days[sel]=(S.days[DAYS[i-1]]||[]).map(e=>({...e})); touch(); view='day'; render();
 };
 $('#exp').onclick=()=>{
   const a=document.createElement('a');
@@ -393,40 +416,12 @@ $('#imp').onclick=()=>{
 $('#gear').onclick=()=>{ $('#right').classList.toggle('open'); $('#veil').classList.toggle('open'); };
 $('#veil').onclick=()=>{ $('#right').classList.remove('open'); $('#veil').classList.remove('open'); };
 
-/* ── sync link (once per device, kept out of the repo) ─────── */
-function syncUI(){
-  const auto = !localStorage.getItem(URLK) && CONFIG.url;
-  $('#link').style.display = auto ? 'none' : '';
-  $('#link').textContent = linked ? 'נתק את המכשיר הזה' : 'חבר סנכרון';
-  $('#syncHint').textContent = linked
-    ? 'מסתנכרן אוטומטית מול Supabase. חבר גם את הפלאפון כדי לראות שם אותו לוח.'
-    : 'ללא סנכרון — נשמר בדפדפן הזה בלבד. "חבר סנכרון" מבקש כתובת פרויקט ומפתח anon, ושומר אותם במכשיר הזה בלבד.';
-}
-$('#link').onclick=async()=>{
-  if(linked){
-    if(!confirm('לנתק את המכשיר הזה? הנתונים יישארו ב-Supabase וגם כאן.')) return;
-    localStorage.removeItem(URLK); localStorage.removeItem(KEYK);
-    linked=false; syncUI(); say('נשמר במכשיר','ok'); return;
-  }
-  const u=prompt('כתובת הפרויקט ב-Supabase (https://xxxx.supabase.co):', sbUrl()); if(!u) return;
-  const k=prompt('מפתח anon public:',''); if(!k) return;
-  localStorage.setItem(URLK,u.trim()); localStorage.setItem(KEYK,k.trim());
-  linked=true; say('מתחבר…','busy');
-  try{
-    const r=await R.load();
-    if(r && r.updatedAt>S.updatedAt){ S=r; localStorage.setItem(LS,JSON.stringify(S)); render(); }
-    else await R.save(S);
-    say('מסונכרן','ok'); syncUI();
-  }catch(e){
-    linked=false; localStorage.removeItem(KEYK); syncUI(); say('החיבור נכשל','err');
-    alert('לא הצלחתי להתחבר ('+e.message+').\nבדוק את הכתובת ואת המפתח, ושהרצת את ה-SQL שיוצר את טבלת plan.');
-  }
-};
-
 /* ── boot ──────────────────────────────────────────────────── */
 try{ const c=localStorage.getItem(LS); if(c) S={...S,...JSON.parse(c)}; }catch(e){}
 migrate();
-syncUI();
+$('#syncHint').textContent = linked
+  ? 'הלוח מסתנכרן אוטומטית בין כל המכשירים. הייצוא הוא גיבוי נוסף.'
+  : 'ללא סנכרון — נשמר בדפדפן הזה בלבד.';
 say(linked?'מתחבר…':'נשמר במכשיר', linked?'busy':'ok');
 render();
 pull(); setInterval(pull,20000);
