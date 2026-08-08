@@ -232,11 +232,15 @@ button{background:none;border:0;cursor:pointer}
 
 <script>
 /* ═══ סנכרון ═══════════════════════════════════════════════
-   הנתונים נשמרים כקובץ JSON יחיד ב-Gist פרטי ב-GitHub.
-   מזהה ה-Gist והטוקן נשמרים ב-localStorage של כל מכשיר בנפרד,
-   בכוונה — כדי שלא ישבו בקוד של אתר ציבורי.
-   מתחברים דרך "חבר סנכרון" בפאנל ההגדרות, פעם אחת בכל מכשיר. */
-const GIST='sp-gist', TOK='sp-token';
+   הנתונים נשמרים כמסמך JSON יחיד בשורה אחת ב-Supabase.
+   כברירת מחדל הכתובת והמפתח נשמרים ב-localStorage של כל מכשיר
+   בנפרד ("חבר סנכרון" בפאנל ההגדרות) — כדי שלא ישבו בקוד של
+   אתר ציבורי. אם לא אכפת שהלוח יהיה גלוי, אפשר למלא אותם כאן
+   פעם אחת ואז שום מכשיר לא צריך להתחבר.                    */
+const CONFIG = { url:"", key:"" };
+const URLK='sp-url', KEYK='sp-key';
+const sbUrl = () => (localStorage.getItem(URLK) || CONFIG.url || '').replace(/\/+$/,'');
+const sbKey = () =>  localStorage.getItem(KEYK) || CONFIG.key || '';
 /* ══════════════════════════════════════════════════════════ */
 
 const START='2026-08-08', END='2026-09-01', LS='summer-plan';
@@ -251,24 +255,24 @@ const TODAY=iso(new Date());
 let S={v:1,updatedAt:0,range:{from:8,to:22},days:{}};
 let sel=DAYS.includes(TODAY)?TODAY:DAYS[0];
 let dirty=false, saveT, scrolledTo=null;
-let linked = !!(localStorage.getItem(GIST) && localStorage.getItem(TOK));
+let linked = !!(sbUrl() && sbKey());
 
-/* ── remote: one plan.json file inside a secret gist ───────── */
+/* ── remote: the whole doc as jsonb in plan(id=1) ─────────── */
 const R = {
-  async req(method,body){
-    const r=await fetch('https://api.github.com/gists/'+localStorage.getItem(GIST),{
-      method, cache:'no-store',
-      headers:{Authorization:'Bearer '+localStorage.getItem(TOK),
-               Accept:'application/vnd.github+json'},
-      body: body && JSON.stringify(body)});
-    if(!r.ok) throw new Error(r.status);
-    return r.json();
-  },
+  h(){ const k=sbKey();
+       return {apikey:k, Authorization:'Bearer '+k, 'Content-Type':'application/json'}; },
   async load(){
-    const f=(await this.req('GET')).files['plan.json'];
-    return f ? JSON.parse(f.content) : null;
+    const r=await fetch(`${sbUrl()}/rest/v1/plan?id=eq.1&select=doc`,
+                        {headers:this.h(), cache:'no-store'});
+    if(!r.ok) throw new Error(r.status);
+    return (await r.json())[0]?.doc || null;
   },
-  save(doc){ return this.req('PATCH',{files:{'plan.json':{content:JSON.stringify(doc)}}}); }
+  async save(doc){
+    const r=await fetch(`${sbUrl()}/rest/v1/plan`,{method:'POST',
+      headers:{...this.h(), Prefer:'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify({id:1,doc})});
+    if(!r.ok) throw new Error(r.status);
+  }
 };
 
 const $=s=>document.querySelector(s);
@@ -415,20 +419,22 @@ $('#veil').onclick=()=>{ $('#right').classList.remove('open'); $('#veil').classL
 
 /* ── sync link (once per device, kept out of the repo) ─────── */
 function syncUI(){
+  const auto = !localStorage.getItem(URLK) && CONFIG.url;
+  $('#link').style.display = auto ? 'none' : '';
   $('#link').textContent = linked ? 'נתק את המכשיר הזה' : 'חבר סנכרון';
   $('#syncHint').textContent = linked
-    ? 'מסתנכרן אוטומטית מול ה-Gist. חבר גם את הפלאפון כדי לראות שם אותו לוח.'
-    : 'ללא סנכרון — נשמר בדפדפן הזה בלבד. "חבר סנכרון" מבקש מזהה Gist וטוקן, ושומר אותם במכשיר הזה בלבד.';
+    ? 'מסתנכרן אוטומטית מול Supabase. חבר גם את הפלאפון כדי לראות שם אותו לוח.'
+    : 'ללא סנכרון — נשמר בדפדפן הזה בלבד. "חבר סנכרון" מבקש כתובת פרויקט ומפתח anon, ושומר אותם במכשיר הזה בלבד.';
 }
 $('#link').onclick=async()=>{
   if(linked){
-    if(!confirm('לנתק את המכשיר הזה? הנתונים יישארו ב-Gist וגם כאן.')) return;
-    localStorage.removeItem(TOK); localStorage.removeItem(GIST);
+    if(!confirm('לנתק את המכשיר הזה? הנתונים יישארו ב-Supabase וגם כאן.')) return;
+    localStorage.removeItem(URLK); localStorage.removeItem(KEYK);
     linked=false; syncUI(); say('נשמר במכשיר','ok'); return;
   }
-  const g=prompt('מזהה ה-Gist:', localStorage.getItem(GIST)||''); if(!g) return;
-  const t=prompt('טוקן GitHub (github_pat_… , עם הרשאת Gists: read and write):',''); if(!t) return;
-  localStorage.setItem(GIST,g.trim()); localStorage.setItem(TOK,t.trim());
+  const u=prompt('כתובת הפרויקט ב-Supabase (https://xxxx.supabase.co):', sbUrl()); if(!u) return;
+  const k=prompt('מפתח anon public:',''); if(!k) return;
+  localStorage.setItem(URLK,u.trim()); localStorage.setItem(KEYK,k.trim());
   linked=true; say('מתחבר…','busy');
   try{
     const r=await R.load();
@@ -436,8 +442,8 @@ $('#link').onclick=async()=>{
     else await R.save(S);
     say('מסונכרן','ok'); syncUI();
   }catch(e){
-    linked=false; localStorage.removeItem(TOK); syncUI(); say('החיבור נכשל','err');
-    alert('לא הצלחתי להתחבר. בדוק את מזהה ה-Gist ואת הטוקן (צריך הרשאת Gists: read and write).');
+    linked=false; localStorage.removeItem(KEYK); syncUI(); say('החיבור נכשל','err');
+    alert('לא הצלחתי להתחבר ('+e.message+').\nבדוק את הכתובת ואת המפתח, ושהרצת את ה-SQL שיוצר את טבלת plan.');
   }
 };
 
