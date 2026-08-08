@@ -26,15 +26,18 @@ button,input{font:inherit;color:inherit}
 button{background:none;border:0;cursor:pointer}
 ::selection{background:var(--violet-100)}
 
+/* בגריד RTL העמודה הראשונה היא הימנית — לכן הפאנל מוגדר ראשון */
 #app{
   height:100dvh; display:grid;
-  grid-template-columns:1fr 280px;
+  grid-template-columns:280px 1fr;
   grid-template-rows:58px 1fr;
-  grid-template-areas:"top top" "main right";
+  grid-template-areas:"top top" "side main";
 }
 @media(max-width:900px){
   #app{grid-template-columns:1fr;grid-template-areas:"top" "main"}
 }
+/* טווח שעות הוא תמיד רצף LTR — אחרת ה-bidi הופך 09:00–11:30 ל-11:30–09:00 */
+.ltr{direction:ltr;unicode-bidi:isolate}
 
 /* ── top bar ──────────────────────────────────────────────── */
 #top{
@@ -129,7 +132,7 @@ button{background:none;border:0;cursor:pointer}
 
 /* ── right panel ──────────────────────────────────────────── */
 #right{
-  grid-area:right;border-inline-start:1px solid var(--line);
+  grid-area:side;border-inline-end:1px solid var(--line);
   overflow-y:auto;background:var(--bg)}
 .grp{padding:16px 18px;border-bottom:1px solid var(--line)}
 .grp h4{
@@ -147,7 +150,7 @@ button{background:none;border:0;cursor:pointer}
   #right{
     position:fixed;inset:0 0 0 auto;width:min(310px,86vw);z-index:20;
     transform:translateX(100%);transition:transform .18s ease;
-    box-shadow:-8px 0 30px #11111122}
+    box-shadow:-8px 0 30px #11111122;border-inline-end:0}
   #right.open{transform:none}
   #veil{position:fixed;inset:0;background:#11111155;z-index:19;display:none}
   #veil.open{display:block}
@@ -173,11 +176,11 @@ button{background:none;border:0;cursor:pointer}
   <main id="main">
     <div id="cal"></div>
     <div id="day" hidden>
-      <a id="back">← חזרה ליומן</a>
+      <a id="back">→ חזרה ליומן</a>
       <div id="dayhead">
-        <button class="nav" id="prev" title="יום קודם">›</button>
+        <button class="nav" id="prev" title="יום קודם">→</button>
         <h1></h1>
-        <button class="nav" id="next" title="יום הבא">‹</button>
+        <button class="nav" id="next" title="יום הבא">←</button>
       </div>
       <p id="daysub"></p>
       <div id="rows"></div>
@@ -320,7 +323,7 @@ function paintCal(){
       const c=document.createElement('button');
       c.className='cell'+(day===TODAY?' today':'');
       c.innerHTML=`<span class="n">${parse(day).getDate()}</span>`
-        + evs.slice(0,3).map(e=>`<span class="ev"><b>${esc(span(e))}</b>${esc(e.x)}</span>`).join('')
+        + evs.slice(0,3).map(e=>`<span class="ev"><b class="ltr">${esc(span(e))}</b>${esc(e.x)}</span>`).join('')
         + (evs.length>3?`<span class="more">ועוד ${evs.length-3}</span>`:'');
       c.onclick=()=>{ sel=day; view='day'; render(); };
       grid.append(c);
@@ -341,10 +344,10 @@ function paintDay(focusEv){
   for(const ev of evs){
     const r=document.createElement('div');
     r.className='r'+(ev.x.trim()?' full':'');
-    r.innerHTML=`<span class="times">
-        <input type="time" dir="ltr" value="${ev.t}" title="שעת התחלה">
+    r.innerHTML=`<span class="times ltr">
+        <input type="time" value="${ev.t}" title="שעת התחלה">
         <i>–</i>
-        <input type="time" dir="ltr" value="${ev.e}" title="שעת סיום (לא חובה)">
+        <input type="time" value="${ev.e}" title="שעת סיום (לא חובה)">
       </span>
       <input type="text" placeholder="מה עושים?" autocomplete="off">
       <button class="x" title="מחק אירוע">×</button>`;
