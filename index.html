@@ -239,7 +239,9 @@ button{background:none;border:0;cursor:pointer}
    פעם אחת ואז שום מכשיר לא צריך להתחבר.                    */
 const CONFIG = { url:"", key:"" };
 const URLK='sp-url', KEYK='sp-key';
-const sbUrl = () => (localStorage.getItem(URLK) || CONFIG.url || '').replace(/\/+$/,'');
+// מקבל גם את כתובת ה-REST מעמוד Data API, לא רק את ה-Project URL
+const sbUrl = () => (localStorage.getItem(URLK) || CONFIG.url || '')
+                      .trim().replace(/\/+$/,'').replace(/\/rest\/v1$/,'');
 const sbKey = () =>  localStorage.getItem(KEYK) || CONFIG.key || '';
 /* ══════════════════════════════════════════════════════════ */
 
