@@ -14,6 +14,7 @@
 :root{
   --bg:#ffffff; --muted:#f5f3fb; --violet:#7c3aed; --violet-100:#ede9fe;
   --border:#e4def2; --ink:#111111; --sub:#5c5c66; --line:#e8e8ec;
+  --faint:#78728a;   /* 4.59:1 על לבן — הבהיר ביותר שעדיין עובר AA */
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
@@ -27,23 +28,27 @@ button{background:none;border:0;cursor:pointer}
 ::selection{background:var(--violet-100)}
 
 /* בגריד RTL העמודה הראשונה היא הימנית — לכן הפאנל מוגדר ראשון.
-   צר: היומן והיום חולקים את אותו אזור, אחד מהם מוסתר.
-   רחב: שניהם על המסך זה לצד זה ואין מעבר מסכים בכלל. */
+   רחב: היומן והיום זה לצד זה, כל אחד גולל בנפרד.
+   צר: #stack הופך לגולל אחד והם נערמים. שניהם תמיד על המסך —
+   אין מצב תצוגה ואין מסך להחליף. */
 #app{
   height:100dvh; display:grid;
   grid-template-columns:280px 1fr;
-  grid-template-rows:58px 1fr;
+  grid-template-rows:calc(58px + env(safe-area-inset-top)) 1fr;
   grid-template-areas:"top top" "side main";
 }
-#cal,#day{grid-area:main;overflow-y:auto;background:var(--bg)}
-/* display:grid על #cal גובר על כלל ה-hidden של הדפדפן — צריך אותו במפורש */
-#cal[hidden],#day[hidden]{display:none}
+/* ברירת המחדל היא הערימה, והמסך הרחב הוא היוצא מן הכלל — כך אין רוחב
+   ביניים (למשל 1250.5px בזום/סקיילינג) שלא נתפס באף שאילתה */
+#stack{display:block;grid-area:main;overflow-y:auto;overscroll-behavior:contain}
+#cal,#day{background:var(--bg)}
+#day{border-top:1px solid var(--line)}
 @media(min-width:1251px){
   #app{grid-template-columns:280px 1fr 490px;
        grid-template-areas:"top top top" "side cal day"}
+  #stack{display:contents}
   #cal{grid-area:cal}
-  #day{grid-area:day;border-inline-start:1px solid var(--line)}
-  #back{display:none}
+  #day{grid-area:day;border-top:0;border-inline-start:1px solid var(--line)}
+  #cal,#day{overflow-y:auto;overscroll-behavior:contain}
 }
 @media(max-width:900px){
   #app{grid-template-columns:1fr;grid-template-areas:"top" "main"}
@@ -54,7 +59,9 @@ button{background:none;border:0;cursor:pointer}
 /* ── top bar ──────────────────────────────────────────────── */
 #top{
   grid-area:top; display:flex; align-items:center; gap:16px;
-  padding:0 20px; border-bottom:1px solid var(--line); background:var(--bg);
+  padding:env(safe-area-inset-top) max(20px,env(safe-area-inset-right)) 0
+          max(20px,env(safe-area-inset-left));
+  border-bottom:1px solid var(--line); background:var(--bg);
 }
 #brand{font-weight:700;font-size:17px;letter-spacing:-.2px}
 #brand em{font-style:normal;color:var(--violet)}
@@ -68,7 +75,9 @@ button{background:none;border:0;cursor:pointer}
 #gear{display:none;font-size:19px;color:var(--sub);padding:4px 6px}
 @media(max-width:900px){
   #gear{display:block} #brand span{display:none} #status{font-size:0;gap:0}
-  #status::before{width:9px;height:9px}
+  #status::before{width:10px;height:10px}
+  /* תקלת סנכרון היא הדבר האחרון שמותר לכווץ לנקודה — שם היא מוצגת במילים */
+  #status.err{font-size:11.5px;gap:6px;color:#c0392b}
 }
 
 /* calendar — חודשים זה לצד זה כשיש רוחב, אחרת אחד מתחת לשני */
@@ -92,14 +101,24 @@ button{background:none;border:0;cursor:pointer}
   background:var(--violet);color:#fff;width:24px;height:24px;
   display:grid;place-items:center;font-weight:700}
 .cell.sel{background:var(--muted);outline:2px solid var(--violet);outline-offset:-2px}
+.evs{display:flex;flex-direction:column;gap:3px;min-width:0;margin-top:2px}
 .cell .ev{
   font-size:11.5px;line-height:1.35;background:var(--violet-100);
   padding:2px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cell .more{font-size:11px;color:var(--sub);padding-inline-start:5px}
-@media(max-width:900px){
-  #cal{padding:14px 10px 50px}
-  .cell{min-height:78px;padding:4px 4px;gap:2px}
-  .cell .ev{font-size:10px;padding:1px 3px}
+/* ── phone ────────────────────────────────────────────────────
+   בתא של ~45px טקסט לא קריא, ולכן האירועים הופכים לריבועים
+   (ריבוע ולא עיגול — הפלטה כולה radius 0). */
+@media(max-width:700px){
+  #cal{padding:12px 8px calc(40px + env(safe-area-inset-bottom))}
+  .wd span{padding:6px 0;font-size:11px}
+  .cell{min-height:62px;padding:5px 4px;gap:0;justify-content:flex-start}
+  /* התאריך בפינה כמו בכל לוח שנה — מרכוז גרם לתא להיראות כמו אייקון */
+  .cell .n{font-size:13px;align-self:flex-start}
+  .cell.today .n{width:22px;height:22px;font-size:12px}
+  .evs{flex-direction:row;flex-wrap:wrap;gap:2px;justify-content:flex-start;margin-top:4px}
+  .cell .ev{width:6px;height:6px;padding:0;font-size:0;background:var(--violet);flex:none}
+  .cell .more{font-size:10px;padding:0;line-height:1;color:var(--violet)}
 }
 
 /* day view */
@@ -113,8 +132,8 @@ button{background:none;border:0;cursor:pointer}
   width:32px;height:32px;border:1px solid var(--border);display:grid;
   place-items:center;color:var(--sub);font-size:15px;flex:none}
 .nav:hover{border-color:var(--violet);color:var(--violet)}
+.nav:disabled{opacity:.32;cursor:default;border-color:var(--border);color:var(--sub)}
 #daysub{font-size:13.5px;color:var(--sub);margin-bottom:20px}
-#back{font-size:13.5px;color:var(--violet);font-weight:500;margin-bottom:18px;display:block}
 
 /* גלישה: בעמודה צרה שדה הטקסט יורד לשורה משלו במקום להצטמצם לכלום */
 .r{display:flex;flex-wrap:wrap;align-items:center;gap:6px;
@@ -126,13 +145,13 @@ button{background:none;border:0;cursor:pointer}
   font-size:14.5px;font-variant-numeric:tabular-nums;padding:5px 6px;cursor:pointer}
 .r input[type=time]:hover{border-color:var(--border)}
 .r input[type=time]:focus{outline:none;border-color:var(--violet);color:var(--ink)}
-.times i{color:#c9c4d6;font-style:normal;font-size:12px}
+.times i{color:var(--sub);font-style:normal;font-size:12px}
 .r input[type=text]{
   flex:1 1 150px;background:none;border:0;padding:8px 6px;font-size:15.5px;min-width:0}
-.r input[type=text]:focus{outline:none}
-.r input[type=text]::placeholder{color:#c9c4d6}
+.r input[type=text]:focus{outline:2px solid var(--violet);outline-offset:-2px}
+.r input[type=text]::placeholder{color:var(--faint)}
 .r.full input[type=time]{color:var(--violet);font-weight:500}
-.r .x{flex:none;width:28px;color:#d6d1e0;font-size:18px;line-height:1}
+.r .x{flex:none;width:28px;color:var(--faint);font-size:18px;line-height:1}
 .r:hover .x,.r:focus-within .x{color:var(--sub)}
 .r .x:hover{color:#c0392b}
 #add{
@@ -158,15 +177,45 @@ button{background:none;border:0;cursor:pointer}
 .stat b{color:var(--violet);font-weight:700}
 
 @media(max-width:900px){
+  /* נפתח מאותו צד שבו יושב כפתור ☰ (הוא הילד האחרון, כלומר בשמאל ב-RTL) */
   #right{
-    position:fixed;inset:0 0 0 auto;width:min(310px,86vw);z-index:20;
-    transform:translateX(100%);transition:transform .18s ease;
-    box-shadow:-8px 0 30px #11111122;border-inline-end:0}
+    position:fixed;inset:0 auto 0 0;width:min(310px,86vw);z-index:20;
+    padding-top:env(safe-area-inset-top);
+    padding-bottom:env(safe-area-inset-bottom);
+    transform:translateX(-100%);transition:transform .2s ease;
+    box-shadow:8px 0 30px #11111122;border-inline-end:0}
   #right.open{transform:none}
   #veil{position:fixed;inset:0;background:#11111155;z-index:19;display:none}
   #veil.open{display:block}
-  #day{padding:18px 14px 60px}
-  #dayhead h1{font-size:21px}
+
+  #day{padding:0 14px calc(50px + env(safe-area-inset-bottom))}
+  /* הכותרת והחצים נשארים בהישג יד גם ביום עמוס */
+  #dayhead{position:sticky;top:0;z-index:2;background:var(--bg);
+           padding:14px 0 8px;margin-bottom:0}
+  #dayhead h1{font-size:clamp(17px,5vw,20px)}
+  #daysub{margin-bottom:12px}
+
+  /* יעדי מגע: 44px, ו-16px בשדות כדי ש-iOS לא יזום בפוקוס */
+  .nav{width:42px;height:42px;font-size:17px}
+  #gear{padding:8px 10px;font-size:21px}
+  /* השעות בשורה משלהן, ו-× יושב ליד הטקסט שהוא מוחק ולא ליד השעות */
+  .r{gap:4px;padding:9px 0}
+  .times{flex:0 0 100%}
+  .r input[type=time]{width:112px;font-size:16px;padding:9px 6px}
+  .r input[type=text]{order:2;flex:1 1 auto;font-size:16px;padding:6px 4px 8px}
+  .r .x{order:3;width:42px;height:42px;font-size:22px}
+  #add{width:100%;text-align:center;padding:13px;font-size:15px}
+  .btn{padding:12px}
+}
+/* מגע: בלי הבהוב כחול, עם משוב לחיצה אמיתי */
+@media(hover:none){
+  *{-webkit-tap-highlight-color:transparent}
+  .cell:active{background:var(--violet-100)}
+  .btn:active,#add:active,.nav:active{background:var(--violet-100)}
+  .r .x{color:var(--sub)}
+}
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;transition-duration:.01ms!important}
 }
 </style>
 </head>
@@ -176,23 +225,24 @@ button{background:none;border:0;cursor:pointer}
   <header id="top">
     <div id="brand">תוכנית <em>הקיץ</em><span>8–31 באוגוסט 2026</span></div>
     <div class="sp"></div>
-    <div id="status">טוען…</div>
-    <button id="gear" title="תפריט">☰</button>
+    <div id="status" role="status" aria-live="polite" aria-atomic="true">טוען…</div>
+    <button id="gear" aria-label="הגדרות וגיבוי" aria-expanded="false">☰</button>
   </header>
 
+  <div id="stack">
   <main id="cal"></main>
-  <section id="day" hidden>
-    <a id="back">→ חזרה ליומן</a>
+  <section id="day">
     <div id="dayhead">
       <h1></h1>
       <div class="navs">
-        <button class="nav" id="prev" title="יום קודם">→</button>
-        <button class="nav" id="next" title="יום הבא">←</button>
+        <button class="nav" id="prev" aria-label="יום קודם">→</button>
+        <button class="nav" id="next" aria-label="יום הבא">←</button>
       </div>
     </div>
     <p id="daysub"></p>
     <div id="rows"></div>
   </section>
+  </div>
 
   <aside id="right">
     <div class="grp">
@@ -243,7 +293,6 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 /* days[date] = [{t:"HH:MM", e:"HH:MM"|"", x:"מה עושים"}], ממוין לפי t */
 let S={v:3,updatedAt:0,days:{}};
 let sel=DAYS.includes(TODAY)?TODAY:DAYS[0];
-let view='cal';
 let dirty=false, saveT;
 let linked = !!(sbUrl() && sbKey());
 
@@ -277,15 +326,21 @@ function touch(){
   clearTimeout(saveT); saveT=setTimeout(push,700);
 }
 async function push(){
-  try{ await R.save(S); dirty=false;
+  const stamp=S.updatedAt;
+  try{ await R.save(S);
+       // עריכה שנעשתה בזמן השמירה עדיין לא נשלחה — אסור לסמן "נקי"
+       if(S.updatedAt===stamp) dirty=false;
        say('מסונכרן · '+new Date().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}),'ok'); }
   catch(e){ say('אין חיבור — נשמר במכשיר','err'); clearTimeout(saveT); saveT=setTimeout(push,8000); }
 }
+const busy=()=>dirty||document.activeElement?.tagName==='INPUT';
 async function pull(){
-  if(!linked||dirty||document.activeElement?.tagName==='INPUT') return;
+  if(!linked||busy()) return;
   try{
     const r=await R.load();
-    if(r && r.updatedAt>S.updatedAt){ S=r; migrate(); localStorage.setItem(LS,JSON.stringify(S)); render(); }
+    // המצב יכול היה להשתנות תוך כדי הבקשה — בודקים שוב לפני שדורסים
+    if(busy()) return;
+    if(r && r.updatedAt>S.updatedAt){ S=r; migrate(S); localStorage.setItem(LS,JSON.stringify(S)); render(); }
     say('מסונכרן','ok');
   }catch(e){ say('אין חיבור — נשמר במכשיר','err'); }
 }
@@ -294,40 +349,64 @@ const dayOf=day=>(S.days[day]||=[]);          // יוצר את היום — רק
 const filled=day=>(S.days[day]||[]).filter(e=>e.x.trim()).length;
 const sorted=day=>[...(S.days[day]||[])].sort((a,b)=>a.t.localeCompare(b.t));
 
-// ממיין את היום במקום, ומצייר מחדש רק אם הסדר באמת השתנה
-function resort(focus){
+// ממיין את היום במקום. מזיז שורות קיימות ולא בונה מחדש — ציור מחדש בתוך
+// blur מנתק את האלמנט שנלחץ, והלחיצה שגרמה ל-blur הייתה נבלעת.
+const rowOf=new Map(), cellOf=new Map();
+function resort(){
   const a=dayOf(sel), before=a.map(e=>e.t).join('|');
   a.sort((x,y)=>x.t.localeCompare(y.t));
-  a.map(e=>e.t).join('|')!==before ? render(focus) : paintCal();
+  if(a.map(e=>e.t).join('|')!==before){
+    const rows=$('#rows'), add=$('#add');
+    a.forEach(ev=>{ const el=rowOf.get(ev); if(el) rows.insertBefore(el,add); });
+  }
+  refreshCell(sel);
 }
 
-/* v1 שמר {"HH:MM":"טקסט"} לכל יום; v2 היה [{t,x}] בלי שעת סיום */
-function migrate(){
-  for(const [day,v] of Object.entries(S.days||{})){
-    const evs=(Array.isArray(v) ? v : Object.entries(v).map(([t,x])=>({t,x})))
-                .map(ev=>({t:ev.t, e:ev.e||'', x:ev.x||''}))
-                .sort((a,b)=>a.t.localeCompare(b.t));
-    evs.length ? S.days[day]=evs : delete S.days[day];   // לא לשמור ימים ריקים
+/* v1 שמר {"HH:MM":"טקסט"} לכל יום; v2 היה [{t,x}] בלי שעת סיום.
+   מאמת גם צורה — מסמך פגום מרחוק או מייבוא לא אמור להפיל את הדף. */
+const HHMM=/^\d{2}:\d{2}$/;
+function migrate(d){
+  if(!d.days || typeof d.days!=='object') d.days={};
+  for(const [day,v] of Object.entries(d.days)){
+    const raw = Array.isArray(v) ? v
+              : v && typeof v==='object' ? Object.entries(v).map(([t,x])=>({t,x})) : [];
+    const evs = raw.filter(ev=>ev && typeof ev==='object' && HHMM.test(ev.t))
+                   .map(ev=>({t:ev.t, e:HHMM.test(ev.e)?ev.e:'', x:String(ev.x??'')}))
+                   .sort((a,b)=>a.t.localeCompare(b.t));
+    evs.length ? d.days[day]=evs : delete d.days[day];   // לא לשמור ימים ריקים
   }
-  delete S.range;
-  S.v=3;
+  delete d.range;
+  d.v=3;
 }
 
 /* ── render ────────────────────────────────────────────────── */
-// מ-1251px ומעלה שניהם על המסך ואין מעבר מסכים
-const wide=matchMedia('(min-width:1251px)');
-wide.addEventListener('change',()=>render());
-
 function render(focusEv){
-  const split=wide.matches;
-  $('#cal').hidden = !split && view!=='cal';
-  $('#day').hidden = !split && view!=='day';
   paintCal(); paintDay(focusEv);
   paintStats();
 }
 
+const cellClass=day=>'cell'+(day===TODAY?' today':'')+(day===sel?' sel':'');
+const cellLabel=day=>{ const d=parse(day), n=filled(day);
+  return `${WD[d.getDay()]}, ${d.getDate()} ב${MO[d.getMonth()]}, `
+       + (n?`${n} אירועים`:'ריק'); };
+// ביומן רק מה עושים, בלי שעות — הסדר הכרונולוגי מגיע מ-sorted().
+// במובייל .evs הופך לשורת ריבועים, כי טקסט בתא של 45px לא קריא.
+function cellInner(day){
+  const evs=sorted(day).filter(e=>e.x.trim());
+  return `<span class="n">${parse(day).getDate()}</span><span class="evs">`
+    + evs.slice(0,4).map(e=>`<span class="ev">${esc(e.x)}</span>`).join('')
+    + (evs.length>4?`<span class="more">+${evs.length-4}</span>`:'')
+    + `</span>`;
+}
+// עדכון תא בודד במקום בנייה מחדש של כל היומן (שומר על לחיצות ועל ביצועים)
+function refreshCell(day){
+  const c=cellOf.get(day); if(!c) return;
+  c.className=cellClass(day); c.innerHTML=cellInner(day);
+  c.setAttribute('aria-label',cellLabel(day));
+}
+
 function paintCal(){
-  const box=$('#cal'); box.textContent='';
+  const box=$('#cal'); box.textContent=''; cellOf.clear();
   for(const m of [...new Set(DAYS.map(d=>d.slice(0,7)))]){
     const days=DAYS.filter(d=>d.startsWith(m)), first=parse(days[0]);
     const sec=document.createElement('section'); sec.className='mo';
@@ -338,15 +417,14 @@ function paintCal(){
       const p=document.createElement('div'); p.className='cell pad'; grid.append(p);
     }
     for(const day of days){
-      const evs=sorted(day).filter(e=>e.x.trim());
       const c=document.createElement('button');
-      c.className='cell'+(day===TODAY?' today':'')+(day===sel?' sel':'');
-      c.innerHTML=`<span class="n">${parse(day).getDate()}</span>`
-        // ביומן רק מה עושים, בלי שעות — הסדר הכרונולוגי מגיע מ-sorted()
-        + evs.slice(0,4).map(e=>`<span class="ev">${esc(e.x)}</span>`).join('')
-        + (evs.length>4?`<span class="more">ועוד ${evs.length-4}</span>`:'');
-      // במסך מפוצל היום פשוט מתחלף בצד, בלי לעזוב את היומן
-      c.onclick=()=>{ sel=day; if(!wide.matches) view='day'; render(); };
+      c.className=cellClass(day);
+      c.innerHTML=cellInner(day);
+      c.setAttribute('aria-label',cellLabel(day));
+      // במסך צר עורך היום נמצא מתחת ליומן, ולכן מגלגלים אליו
+      c.onclick=()=>{ sel=day; render();
+                      $('#day').scrollIntoView({block:'nearest',behavior:'smooth'}); };
+      cellOf.set(day,c);
       grid.append(c);
     }
     sec.append(grid); box.append(sec);
@@ -360,32 +438,34 @@ function paintDay(focusEv){
   $('#prev').disabled = DAYS.indexOf(sel)===0;
   $('#next').disabled = DAYS.indexOf(sel)===DAYS.length-1;
 
-  const rows=$('#rows'); rows.textContent='';
+  const rows=$('#rows'); rows.textContent=''; rowOf.clear();
   const evs=sorted(sel);
   for(const ev of evs){
     const r=document.createElement('div');
     r.className='r'+(ev.x.trim()?' full':'');
     r.innerHTML=`<span class="times ltr">
-        <input type="time" value="${ev.t}" title="שעת התחלה">
-        <i>–</i>
-        <input type="time" value="${ev.e}" title="שעת סיום (לא חובה)">
+        <input type="time" value="${esc(ev.t)}" aria-label="שעת התחלה">
+        <i aria-hidden="true">–</i>
+        <input type="time" value="${esc(ev.e)}" aria-label="שעת סיום (לא חובה)">
       </span>
-      <input type="text" placeholder="מה עושים?" autocomplete="off">
-      <button class="x" title="מחק אירוע">×</button>`;
+      <input type="text" placeholder="מה עושים?" aria-label="מה עושים?" autocomplete="off">
+      <button class="x" aria-label="מחק אירוע">×</button>`;
     const [times,text,del]=r.children;
     const [from,,to]=times.children;
     text.value=ev.x;
-    // רק היומן מצויר מחדש בהקלדה — ציור השורות היה הורס את מיקום הסמן
+    // רק התא ביומן מתעדכן בהקלדה — ציור השורות היה הורס את מיקום הסמן
     text.oninput =()=>{ ev.x=text.value; r.classList.toggle('full',!!text.value.trim());
-                        touch(); if(wide.matches) paintCal(); };
+                        touch(); refreshCell(sel); };
     // שדה time יורה change כבר כשהערך תקין, כלומר באמצע ההקלדה. ציור מחדש
     // שם היה הורס את השדה תוך כדי — לכן change רק שומר, והמיון קורה ב-blur.
     from.onchange=()=>{ if(from.value){ ev.t=from.value; touch(); } };
     to.onchange  =()=>{ ev.e=to.value; touch(); };
     from.onblur  =()=>{ if(!from.value){ from.value=ev.t; return }
                         if(from.value!==ev.t){ ev.t=from.value; touch(); }
-                        resort(ev); };
-    del.onclick  =()=>{ const a=dayOf(sel); a.splice(a.indexOf(ev),1); touch(); render(); };
+                        resort(); };
+    del.onclick  =()=>{ if(ev.x.trim() && !confirm(`למחוק את "${ev.x.trim()}"?`)) return;
+                        const a=dayOf(sel); a.splice(a.indexOf(ev),1); touch(); render(); };
+    rowOf.set(ev,r);
     rows.append(r);
     if(ev===focusEv) queueMicrotask(()=>text.focus());
   }
@@ -416,35 +496,47 @@ const go=n=>{ const i=DAYS.indexOf(sel)+n;
               if(i>=0&&i<DAYS.length){ sel=DAYS[i]; render(); } };
 $('#prev').onclick=()=>go(-1);
 $('#next').onclick=()=>go(1);
-$('#back').onclick=()=>{ view='cal'; render(); };
 
 $('#clearDay').onclick=()=>{
   if(confirm(`למחוק את כל האירועים ב-${parse(sel).getDate()} ב${MO[parse(sel).getMonth()]}?`)){
     delete S.days[sel]; touch(); render(); } };
 $('#copyPrev').onclick=()=>{
   const i=DAYS.indexOf(sel); if(i<1) return alert('אין יום קודם');
-  S.days[sel]=(S.days[DAYS[i-1]]||[]).map(e=>({...e})); touch(); view='day'; render();
+  const src=S.days[DAYS[i-1]]||[];
+  if(!src.length) return alert('היום הקודם ריק — אין מה להעתיק');
+  if(filled(sel) && !confirm('ליום הזה כבר יש אירועים. להחליף אותם?')) return;
+  S.days[sel]=src.map(e=>({...e})); touch(); render();
 };
 $('#exp').onclick=()=>{
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:'application/json'}));
-  a.download='summer-plan.json'; a.click(); URL.revokeObjectURL(a.href);
+  const a=document.createElement('a'), url=URL.createObjectURL(
+    new Blob([JSON.stringify(S,null,2)],{type:'application/json'}));
+  a.href=url; a.download='summer-plan.json'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);   // ביטול מיידי קטע הורדות
 };
 $('#imp').onclick=()=>{
   const i=document.createElement('input'); i.type='file'; i.accept='.json';
   i.onchange=async()=>{ try{
       const o=JSON.parse(await i.files[0].text());
-      if(!o.days) throw 0;
-      S={...S,...o}; migrate(); touch(); render();
+      if(!o || typeof o!=='object' || !o.days || typeof o.days!=='object') throw 0;
+      const next={...S,...o};
+      migrate(next);              // מאמת על עותק — קובץ פגום לא נוגע במצב הקיים
+      S=next; touch(); render();
     }catch(e){ alert('הקובץ לא תקין'); } };
   i.click();
 };
-$('#gear').onclick=()=>{ $('#right').classList.toggle('open'); $('#veil').classList.toggle('open'); };
-$('#veil').onclick=()=>{ $('#right').classList.remove('open'); $('#veil').classList.remove('open'); };
+const drawer=open=>{ $('#right').classList.toggle('open',open);
+                     $('#veil').classList.toggle('open',open);
+                     $('#gear').setAttribute('aria-expanded',open);
+                     if(open) $('#right').querySelector('.btn')?.focus();
+                     else $('#gear').focus(); };
+$('#gear').onclick=()=>drawer(!$('#right').classList.contains('open'));
+$('#veil').onclick=()=>drawer(false);
+addEventListener('keydown',e=>{
+  if(e.key==='Escape' && $('#right').classList.contains('open')) drawer(false); });
 
 /* ── boot ──────────────────────────────────────────────────── */
 try{ const c=localStorage.getItem(LS); if(c) S={...S,...JSON.parse(c)}; }catch(e){}
-migrate();
+migrate(S);
 $('#syncHint').textContent = linked
   ? 'הלוח מסתנכרן אוטומטית בין כל המכשירים. הייצוא הוא גיבוי נוסף.'
   : 'ללא סנכרון — נשמר בדפדפן הזה בלבד.';
